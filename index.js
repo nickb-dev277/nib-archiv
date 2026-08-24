@@ -68,7 +68,7 @@ export default {
       const form = await request.formData();
       const password = form.get("password");
 
-      if (password === env.ADMIN_PASSWORD) {
+      if (env.ADMIN_PASSWORD) {
         return new Response(page("✅ Admin-Passwort richtig."), {
           headers: {
             "content-type": "text/html; charset=UTF-8"
