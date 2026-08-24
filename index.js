@@ -249,22 +249,23 @@ export default {
 
             const folders = await getFolders(env);
 
-            return new Response(
-              adminPage("✅ Sichtbarkeit geändert.", folders),
-              {
-                headers: {
-                  "content-type": "text/html; charset=UTF-8"
-                }
-              }
-             );
-            if (request.method === "POST") {
+return new Response(
+  adminPage("✅ Sichtbarkeit geändert.", folders),
+  {
+    headers: {
+      "content-type": "text/html; charset=UTF-8"
+    }
+  }
+);
 
-          const form = await request.formData();
-          const action = String(form.get("action") || "");
+if (request.method === "POST") {
 
-          if (action === "create_folder") {
+  const form = await request.formData();
+  const action = String(form.get("action") || "");
 
-            const name = String(form.get("name") || "").trim();
+  if (action === "create_folder") {
+
+    const name = String(form.get("name") || "").trim();
 
             if (!name) {
               const folders = await getFolders(env);
