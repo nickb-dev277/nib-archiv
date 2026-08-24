@@ -1,3 +1,8 @@
-name = "nib-archiv"
+name = "nib-archive"
 main = "index.js"
 compatibility_date = "2026-08-24"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "nib-daten"
+database_id = "9d21cf05-7f02-4cc1-800f-48df6bbba914"
