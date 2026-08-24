@@ -1,4 +1,4 @@
-name = "nib-archive"
+name = 'nib-archive'
 main = "index.js"
 compatibility_date = "2026-08-24"
 
