@@ -6,3 +6,7 @@ compatibility_date = "2026-08-24"
 binding = "DB"
 database_name = "nib-daten"
 database_id = "9d21cf05-7f02-4cc1-800f-48df6bbba914"
+
+[[kv_namespaces]]
+binding = "SESSIONS"
+id = "640cb47f4897497086d13c456ade2020"
