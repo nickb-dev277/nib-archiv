@@ -256,7 +256,7 @@ export default {
                   "content-type": "text/html; charset=UTF-8"
                 }
               }
-              if (request.method === "POST") {
+             :) if (request.method === "POST") {
 
           const form = await request.formData();
           const action = String(form.get("action") || "");
