@@ -1,7 +1,7 @@
 const texts = [
   {
     id: 1,
-    title: "Willkommen",
+    title: "Willkommen bei NiB",
     folder: "Fragmente",
     updated: "2026-08-24",
     content: "Das ist der Anfang des NiB-Archivs.\n\nDeine eigenen Gedichte, Texte und Fragmente werden später hier erscheinen."
