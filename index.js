@@ -1,2 +1,310 @@
-const page = `<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>NiB — Gedichte · Texte · Fragmente</title><style>:root{--bg:#f3eee7;--paper:#fbf9f5;--ink:#29251f;--muted:#766d63;--line:#d8cec1}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Georgia,serif}header,main{max-width:900px;margin:auto;padding-left:22px;padding-right:22px}header{padding-top:58px;padding-bottom:28px;border-bottom:1px solid var(--line)}.brand{font-size:44px;letter-spacing:.12em}.sub{color:var(--muted);margin-top:8px}main{padding-top:28px;padding-bottom:70px}.bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px}.bar button{font:inherit;border:1px solid var(--line);background:var(--paper);border-radius:8px;padding:9px 12px;color:var(--ink)}.sort{margin-left:auto;color:var(--muted);padding:9px}.item{display:block;width:100%;text-align:left;background:transparent;border:0;border-bottom:1px solid var(--line);padding:17px 4px;font:inherit}.item:hover{cursor:pointer;background:#00000003}.title{font-size:20px}.meta{font:12px system-ui;color:var(--muted);margin-top:5px}article{display:none;background:var(--paper);padding:32px 28px;box-shadow:0 5px 24px #00000008}article.on{display:block}.back{border:1px solid var(--line);background:transparent;border-radius:7px;padding:8px 12px}.article-title{font-size:34px;margin:28px 0 8px}.content{white-space:pre-wrap;line-height:1.85;font-size:18px}.comments{margin-top:45px;border-top:1px solid var(--line);padding-top:24px}.comments textarea{width:100%;min-height:100px;border:1px solid var(--line);padding:12px;background:white;border-radius:8px}.comment{font:14px system-ui;border-bottom:1px solid var(--line);padding:13px 0}@media(max-width:600px){header{padding-top:35px}.brand{font-size:36px}article{padding:24px 18px}.sort{margin-left:0;width:100%}}</style></head><body><header><div class="brand">NiB</div><div class="sub">Gedichte · Texte · Fragmente</div></header><main><section id="list"><div class="bar"><button onclick="folder('')">Alle</button><button onclick="folder('Gedichte')">Gedichte</button><button onclick="folder('Texte')">Texte</button><button onclick="folder('Fragmente')">Fragmente</button><span class="sort">Zuletzt bearbeitet</span></div><div id="items"></div></section><article id="read"><button class="back" onclick="back()">← Zurück</button><h1 class="article-title" id="at"></h1><div class="meta" id="am"></div><div class="content" id="ac"></div><div class="comments"><h3>Kommentare</h3><textarea id="ct" placeholder="Dein Kommentar …"></textarea><p><button onclick="comment()">Kommentar senden</button></p><div id="cs"></div></div></article></main><script>const texts=[{id:1,title:'Willkommen',folder:'Fragmente',date:'2026-08-24',visibility:'public',body:'Das ist die erste Seite von NiB.\n\nDeine Gedichte, Texte und Fragmente werden später hier gespeichert.'}];let f='';function folder(x){f=x;draw()}function draw(){items.innerHTML='';let a=texts.filter(x=>!f||x.folder===f).sort((a,b)=>b.date.localeCompare(a.date));a.forEach(x=>{let b=document.createElement('button');b.className='item';b.innerHTML='<div class="title"></div><div class="meta"></div>';b.children[0].textContent=x.title;b.children[1].textContent=x.folder+' · '+x.date;b.onclick=()=>open(x.id);items.appendChild(b)})}function open(id){let x=texts.find(t=>t.id===id);list.style.display='none';read.className='on';at.textContent=x.title;am.textContent=x.folder+' · zuletzt bearbeitet '+x.date;ac.textContent=x.body;renderComments(x)}function back(){read.className='';list.style.display='block'}function renderComments(x){cs.innerHTML=(x.comments||[]).map(c=>'<div class="comment"></div>').join('');[...cs.children].forEach((e,i)=>e.textContent=x.comments[i])}function comment(){let s=ct.value.trim(),x=texts.find(t=>t.title===at.textContent);if(!s)return;(x.comments??=[]).push(s);ct.value='';renderComments(x)}draw();</script></main></body></html>`;
-export default {async fetch(){return new Response(page,{headers:{'content-type':'text/html;charset=UTF-8'}})}};
+const texts = [
+  {
+    id: 1,
+    title: "Willkommen",
+    folder: "Fragmente",
+    updated: "2026-08-24",
+    content: "Das ist der Anfang des NiB-Archivs.\n\nDeine eigenen Gedichte, Texte und Fragmente werden später hier erscheinen."
+  }
+];
+
+function page() {
+  return `<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NiB — Gedichte · Texte · Fragmente</title>
+
+<style>
+:root {
+  --bg: #f4f0e9;
+  --paper: #fbf9f5;
+  --text: #29251f;
+  --muted: #766e64;
+  --line: #d8d0c5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+header {
+  max-width: 900px;
+  margin: auto;
+  padding: 60px 22px 30px;
+  border-bottom: 1px solid var(--line);
+}
+
+.logo {
+  font-size: 44px;
+  letter-spacing: .12em;
+}
+
+.subtitle {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+main {
+  max-width: 900px;
+  margin: auto;
+  padding: 30px 22px 80px;
+}
+
+.navigation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 30px;
+}
+
+button {
+  font: inherit;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--text);
+  padding: 9px 14px;
+  border-radius: 8px;
+}
+
+button:hover {
+  cursor: pointer;
+  background: white;
+}
+
+.text {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  padding: 18px 4px;
+}
+
+.title {
+  font-size: 21px;
+}
+
+.meta {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.empty {
+  color: var(--muted);
+  padding: 30px 0;
+}
+
+article {
+  display: none;
+  background: var(--paper);
+  padding: 35px;
+}
+
+article.active {
+  display: block;
+}
+
+.article-title {
+  font-size: 34px;
+  margin: 20px 0 8px;
+}
+
+.article-meta {
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 30px;
+}
+
+.content {
+  white-space: pre-wrap;
+  line-height: 1.85;
+  font-size: 18px;
+}
+
+@media(max-width:600px) {
+  header {
+    padding-top: 40px;
+  }
+
+  .logo {
+    font-size: 36px;
+  }
+
+  article {
+    padding: 24px 18px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <div class="logo">NiB</div>
+  <div class="subtitle">Gedichte · Texte · Fragmente</div>
+</header>
+
+<main>
+
+<section id="overview">
+
+<div class="navigation">
+  <button onclick="showAll()">Alle Texte</button>
+  <button onclick="showFolder('Gedichte')">Gedichte</button>
+  <button onclick="showFolder('Texte')">Texte</button>
+  <button onclick="showFolder('Fragmente')">Fragmente</button>
+</div>
+
+<div id="list"></div>
+
+</section>
+
+<article id="article">
+
+<button onclick="closeText()">← Zurück</button>
+
+<h1 class="article-title" id="articleTitle"></h1>
+
+<div class="article-meta" id="articleMeta"></div>
+
+<div class="content" id="articleContent"></div>
+
+</article>
+
+</main>
+
+<script>
+
+let currentFolder = null;
+
+function getTexts() {
+
+  let result = texts;
+
+  if (currentFolder) {
+    result = result.filter(
+      text => text.folder === currentFolder
+    );
+  }
+
+  return result.sort(
+    (a,b) => b.updated.localeCompare(a.updated)
+  );
+}
+
+function render() {
+
+  const list = document.getElementById("list");
+
+  list.innerHTML = "";
+
+  const items = getTexts();
+
+  if (items.length === 0) {
+
+    list.innerHTML =
+      '<div class="empty">Noch keine Texte in diesem Bereich.</div>';
+
+    return;
+  }
+
+  items.forEach(text => {
+
+    const button = document.createElement("button");
+
+    button.className = "text";
+
+    const title = document.createElement("div");
+    title.className = "title";
+    title.textContent = text.title;
+
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.textContent =
+      text.folder + " · zuletzt bearbeitet " + text.updated;
+
+    button.appendChild(title);
+    button.appendChild(meta);
+
+    button.onclick = () => openText(text.id);
+
+    list.appendChild(button);
+
+  });
+}
+
+function showAll() {
+
+  currentFolder = null;
+  render();
+
+}
+
+function showFolder(folder) {
+
+  currentFolder = folder;
+  render();
+
+}
+
+function openText(id) {
+
+  const text = texts.find(
+    item => item.id === id
+  );
+
+  if (!text) return;
+
+  document.getElementById("overview").style.display = "none";
+
+  document.getElementById("article").classList.add("active");
+
+  document.getElementById("articleTitle").textContent =
+    text.title;
+
+  document.getElementById("articleMeta").textContent =
+    text.folder + " · zuletzt bearbeitet " + text.updated;
+
+  document.getElementById("articleContent").textContent =
+    text.content;
+
+}
+
+function closeText() {
+
+  document.getElementById("article").classList.remove("active");
+
+  document.getElementById("overview").style.display = "block";
+
+}
+
+render();
+
+</script>
+
+</body>
+</html>`;
+}
+
+export default {
+  async fetch(request) {
+    return new Response(page(), {
+      headers: {
+        "content-type": "text/html; charset=UTF-8"
+      }
+    });
+  }
+};
