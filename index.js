@@ -1,6 +1,5 @@
-function page(message = "", loggedIn = false) {
-  if (!loggedIn) {
-    return `<!doctype html>
+function loginPage(message = "") {
+  return `<!doctype html>
 <html lang="de">
 <head>
 <meta charset="utf-8">
@@ -14,26 +13,22 @@ body {
   font-family: Georgia, serif;
 }
 main {
-  max-width: 700px;
-  margin: 60px auto;
+  max-width: 600px;
+  margin: 80px auto;
   padding: 30px 20px;
 }
 h1 {
   font-size: 42px;
   letter-spacing: .12em;
 }
-input, textarea, select, button {
+input, button {
   font: inherit;
   padding: 11px;
   margin-top: 10px;
 }
-input, textarea, select {
+input {
   width: 100%;
   box-sizing: border-box;
-}
-textarea {
-  min-height: 300px;
-  resize: vertical;
 }
 button {
   cursor: pointer;
@@ -64,8 +59,10 @@ ${message ? `<p class="message">${message}</p>` : ""}
 </main>
 </body>
 </html>`;
-  }
+}
 
+
+function adminPage(message = "") {
   return `<!doctype html>
 <html lang="de">
 <head>
@@ -87,9 +84,6 @@ main {
 h1 {
   font-size: 40px;
   letter-spacing: .12em;
-}
-h2 {
-  margin-top: 40px;
 }
 input, textarea, select, button {
   font: inherit;
@@ -170,9 +164,7 @@ Inhalt
 ></textarea>
 </label>
 
-<button type="submit">
-  Text speichern
-</button>
+<button type="submit">Text speichern</button>
 
 </form>
 
@@ -182,70 +174,109 @@ Inhalt
 }
 
 
+function getSession(request) {
+  const cookie = request.headers.get("Cookie") || "";
+
+  const match = cookie.match(
+    /(?:^|;\s*)nib_session=([^;]+)/
+  );
+
+  return match ? match[1] : null;
+}
+
+
 export default {
 
   async fetch(request, env) {
 
+    const session = getSession(request);
+
+    if (session) {
+
+      const valid = await env.SESSIONS.get(session);
+
+      if (valid === "admin") {
+
+        if (request.method === "POST") {
+
+          const form = await request.formData();
+
+          if (form.get("action") === "create") {
+
+            const title = String(form.get("title") || "");
+            const content = String(form.get("content") || "");
+            const folder = String(form.get("folder") || "Fragmente");
+            const visibility = String(form.get("visibility") || "private");
+
+            const now = new Date().toISOString();
+            const id = crypto.randomUUID();
+
+            await env.DB.prepare(`
+              INSERT INTO texts
+              (id, title, content, folder, visibility, updated_at, created_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?)
+            `)
+            .bind(
+              id,
+              title,
+              content,
+              folder,
+              visibility,
+              now,
+              now
+            )
+            .run();
+
+            return new Response(
+              adminPage("✅ Text wurde gespeichert."),
+              {
+                headers: {
+                  "content-type": "text/html; charset=UTF-8"
+                }
+              }
+            );
+          }
+        }
+
+        return new Response(adminPage(), {
+          headers: {
+            "content-type": "text/html; charset=UTF-8"
+          }
+        });
+      }
+    }
+
+
     if (request.method === "POST") {
 
       const form = await request.formData();
+      const password = String(form.get("password") || "");
 
-      const password = form.get("password");
+      if (password === env.ADMIN_PASSWORD) {
 
-      if (password !== env.ADMIN_PASSWORD) {
+        const newSession = crypto.randomUUID();
 
-        return new Response(
-          page("❌ Falsches Passwort."),
+        await env.SESSIONS.put(
+          newSession,
+          "admin",
           {
-            status: 401,
-            headers: {
-              "content-type": "text/html; charset=UTF-8"
-            }
+            expirationTtl: 60 * 60 * 24 * 7
           }
         );
-      }
 
-      const action = form.get("action");
-
-      if (action === "create") {
-
-        const title = form.get("title");
-        const content = form.get("content");
-        const folder = form.get("folder");
-        const visibility = form.get("visibility");
-
-        const now = new Date().toISOString();
-        const id = crypto.randomUUID();
-
-        await env.DB.prepare(`
-          INSERT INTO texts
-          (id, title, content, folder, visibility, updated_at, created_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
-        `)
-        .bind(
-          id,
-          title,
-          content,
-          folder,
-          visibility,
-          now,
-          now
-        )
-        .run();
-
-        return new Response(
-          page("✅ Text wurde gespeichert.", true),
-          {
-            headers: {
-              "content-type": "text/html; charset=UTF-8"
-            }
+        return new Response(adminPage(), {
+          headers: {
+            "content-type": "text/html; charset=UTF-8",
+            "Set-Cookie":
+              `nib_session=${newSession}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=604800`
           }
-        );
+        });
       }
 
       return new Response(
-        page("✅ Anmeldung erfolgreich!", true),
+        loginPage("❌ Falsches Passwort."),
         {
+          status: 401,
           headers: {
             "content-type": "text/html; charset=UTF-8"
           }
@@ -253,7 +284,8 @@ export default {
       );
     }
 
-    return new Response(page(), {
+
+    return new Response(loginPage(), {
       headers: {
         "content-type": "text/html; charset=UTF-8"
       }
