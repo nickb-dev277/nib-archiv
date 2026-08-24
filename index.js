@@ -1,15 +1,5 @@
-const texts = [
-  {
-    id: 1,
-    title: "Willkommen bei NiB",
-    folder: "Fragmente",
-    updated: "2026-08-24",
-    content: "Das ist der Anfang des NiB-Archivs.\n\nDeine eigenen Gedichte, Texte und Fragmente werden später hier erscheinen."
-  }
-];
-
-function page() {
-  return `<!doctype html>
+const HTML = (texts) => `
+<!doctype html>
 <html lang="de">
 <head>
 <meta charset="utf-8">
@@ -18,134 +8,124 @@ function page() {
 
 <style>
 :root {
-  --bg: #f4f0e9;
-  --paper: #fbf9f5;
-  --text: #29251f;
-  --muted: #766e64;
-  --line: #d8d0c5;
+  --bg:#f3efe8;
+  --paper:#fbfaf7;
+  --text:#29251f;
+  --muted:#81786d;
+  --line:#d8d0c5;
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing:border-box; }
 
 body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  font-family: Georgia, "Times New Roman", serif;
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:Georgia,"Times New Roman",serif;
 }
 
 header {
-  max-width: 900px;
-  margin: auto;
-  padding: 60px 22px 30px;
-  border-bottom: 1px solid var(--line);
+  max-width:900px;
+  margin:auto;
+  padding:58px 22px 28px;
+  border-bottom:1px solid var(--line);
 }
 
 .logo {
-  font-size: 44px;
-  letter-spacing: .12em;
+  font-size:44px;
+  letter-spacing:.16em;
 }
 
 .subtitle {
-  margin-top: 8px;
-  color: var(--muted);
-  font-size: 15px;
+  margin-top:8px;
+  color:var(--muted);
+  font-size:15px;
 }
 
 main {
-  max-width: 900px;
-  margin: auto;
-  padding: 30px 22px 80px;
+  max-width:900px;
+  margin:auto;
+  padding:28px 22px 80px;
 }
 
 .navigation {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 30px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-bottom:28px;
 }
 
 button {
-  font: inherit;
-  border: 1px solid var(--line);
-  background: var(--paper);
-  color: var(--text);
-  padding: 9px 14px;
-  border-radius: 8px;
+  font:inherit;
+  border:1px solid var(--line);
+  background:var(--paper);
+  color:var(--text);
+  padding:9px 14px;
+  border-radius:7px;
 }
 
 button:hover {
-  cursor: pointer;
-  background: white;
+  background:white;
+  cursor:pointer;
 }
 
 .text {
-  display: block;
-  width: 100%;
-  text-align: left;
-  border: 0;
-  border-bottom: 1px solid var(--line);
-  border-radius: 0;
-  background: transparent;
-  padding: 18px 4px;
+  display:block;
+  width:100%;
+  text-align:left;
+  border:0;
+  border-bottom:1px solid var(--line);
+  border-radius:0;
+  background:transparent;
+  padding:18px 4px;
 }
 
 .title {
-  font-size: 21px;
+  font-size:21px;
 }
 
 .meta {
-  margin-top: 6px;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.empty {
-  color: var(--muted);
-  padding: 30px 0;
+  margin-top:6px;
+  color:var(--muted);
+  font-size:12px;
 }
 
 article {
-  display: none;
-  background: var(--paper);
-  padding: 35px;
+  display:none;
+  background:var(--paper);
+  padding:35px;
 }
 
 article.active {
-  display: block;
+  display:block;
 }
 
 .article-title {
-  font-size: 34px;
-  margin: 20px 0 8px;
+  font-size:34px;
+  margin:22px 0 8px;
 }
 
 .article-meta {
-  color: var(--muted);
-  font-size: 13px;
-  margin-bottom: 30px;
+  color:var(--muted);
+  font-size:13px;
+  margin-bottom:30px;
 }
 
 .content {
-  white-space: pre-wrap;
-  line-height: 1.85;
-  font-size: 18px;
+  white-space:pre-wrap;
+  line-height:1.85;
+  font-size:18px;
+}
+
+.empty {
+  color:var(--muted);
+  padding:30px 0;
 }
 
 @media(max-width:600px) {
-  header {
-    padding-top: 40px;
-  }
-
-  .logo {
-    font-size: 36px;
-  }
-
-  article {
-    padding: 24px 18px;
-  }
+  header { padding-top:40px; }
+  .logo { font-size:36px; }
+  article { padding:24px 18px; }
 }
 </style>
 </head>
@@ -162,7 +142,7 @@ article.active {
 <section id="overview">
 
 <div class="navigation">
-  <button onclick="showAll()">Alle Texte</button>
+  <button onclick="showFolder(null)">Alle</button>
   <button onclick="showFolder('Gedichte')">Gedichte</button>
   <button onclick="showFolder('Texte')">Texte</button>
   <button onclick="showFolder('Fragmente')">Fragmente</button>
@@ -173,58 +153,41 @@ article.active {
 </section>
 
 <article id="article">
-
-<button onclick="closeText()">← Zurück</button>
-
-<h1 class="article-title" id="articleTitle"></h1>
-
-<div class="article-meta" id="articleMeta"></div>
-
-<div class="content" id="articleContent"></div>
-
+  <button onclick="closeText()">← Zurück</button>
+  <h1 class="article-title" id="articleTitle"></h1>
+  <div class="article-meta" id="articleMeta"></div>
+  <div class="content" id="articleContent"></div>
 </article>
 
 </main>
 
 <script>
+const texts = ${JSON.stringify(texts)};
 
 let currentFolder = null;
 
-function getTexts() {
-
-  let result = texts;
-
-  if (currentFolder) {
-    result = result.filter(
-      text => text.folder === currentFolder
-    );
-  }
-
-  return result.sort(
-    (a,b) => b.updated.localeCompare(a.updated)
-  );
-}
-
 function render() {
-
   const list = document.getElementById("list");
-
   list.innerHTML = "";
 
-  const items = getTexts();
+  let items = texts;
 
-  if (items.length === 0) {
+  if (currentFolder) {
+    items = items.filter(t => t.folder === currentFolder);
+  }
 
+  items.sort((a,b) =>
+    String(b.updated_at).localeCompare(String(a.updated_at))
+  );
+
+  if (!items.length) {
     list.innerHTML =
       '<div class="empty">Noch keine Texte in diesem Bereich.</div>';
-
     return;
   }
 
-  items.forEach(text => {
-
+  for (const text of items) {
     const button = document.createElement("button");
-
     button.className = "text";
 
     const title = document.createElement("div");
@@ -234,77 +197,81 @@ function render() {
     const meta = document.createElement("div");
     meta.className = "meta";
     meta.textContent =
-      text.folder + " · zuletzt bearbeitet " + text.updated;
+      text.folder + " · zuletzt bearbeitet " + text.updated_at;
 
-    button.appendChild(title);
-    button.appendChild(meta);
-
-    button.onclick = () => openText(text.id);
+    button.append(title, meta);
+    button.onclick = () => openText(text);
 
     list.appendChild(button);
-
-  });
-}
-
-function showAll() {
-
-  currentFolder = null;
-  render();
-
+  }
 }
 
 function showFolder(folder) {
-
   currentFolder = folder;
+  document.getElementById("overview").style.display = "block";
+  document.getElementById("article").classList.remove("active");
   render();
-
 }
 
-function openText(id) {
-
-  const text = texts.find(
-    item => item.id === id
-  );
-
-  if (!text) return;
-
+function openText(text) {
   document.getElementById("overview").style.display = "none";
-
   document.getElementById("article").classList.add("active");
 
-  document.getElementById("articleTitle").textContent =
-    text.title;
-
+  document.getElementById("articleTitle").textContent = text.title;
   document.getElementById("articleMeta").textContent =
-    text.folder + " · zuletzt bearbeitet " + text.updated;
-
-  document.getElementById("articleContent").textContent =
-    text.content;
-
+    text.folder + " · zuletzt bearbeitet " + text.updated_at;
+  document.getElementById("articleContent").textContent = text.content;
 }
 
 function closeText() {
-
   document.getElementById("article").classList.remove("active");
-
   document.getElementById("overview").style.display = "block";
-
 }
 
 render();
-
 </script>
 
 </body>
-</html>`;
-}
+</html>
+`;
 
 export default {
-  async fetch(request) {
-    return new Response(page(), {
-      headers: {
-        "content-type": "text/html; charset=UTF-8"
-      }
-    });
+  async fetch(request, env) {
+
+    try {
+      const result = await env.DB
+        .prepare(`
+          SELECT
+            id,
+            title,
+            content,
+            folder,
+            visibility,
+            updated_at,
+            created_at
+          FROM texts
+          WHERE visibility = 'public'
+          ORDER BY updated_at DESC
+        `)
+        .all();
+
+      return new Response(HTML(result.results || []), {
+        headers: {
+          "content-type": "text/html; charset=UTF-8"
+        }
+      });
+
+    } catch (error) {
+
+      return new Response(
+        "NiB konnte die Datenbank gerade nicht laden.",
+        {
+          status:500,
+          headers:{
+            "content-type":"text/plain; charset=UTF-8"
+          }
+        }
+      );
+    }
   }
 };
