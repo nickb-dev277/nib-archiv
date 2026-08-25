@@ -842,10 +842,7 @@ export default {
                 }
               }
             );
-          }
-
-
-          if (action === "create_text") {
+          }          if (action === "create_text") {
 
             const title =
               String(
@@ -992,3 +989,64 @@ export default {
 
 
         if (
+          password ===
+          env.ADMIN_PASSWORD
+        ) {
+
+          const newSession =
+            crypto.randomUUID();
+
+
+          await env.SESSIONS.put(
+            newSession,
+            "admin",
+            {
+              expirationTtl:
+                60 * 60 * 24 * 7
+            }
+          );
+
+
+          return new Response(
+            adminPage(),
+            {
+              headers: {
+                "content-type":
+                  "text/html; charset=UTF-8",
+
+                "Set-Cookie":
+                  `nib_session=${newSession}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=604800`
+              }
+            }
+          );
+        }
+
+
+        return new Response(
+          loginPage(
+            "Falsches Passwort."
+          ),
+          {
+            status: 401,
+
+            headers: {
+              "content-type":
+                "text/html; charset=UTF-8"
+            }
+          }
+        );
+      }
+    }
+
+
+    return new Response(
+      loginPage(),
+      {
+        headers: {
+          "content-type":
+            "text/html; charset=UTF-8"
+        }
+      }
+    );
+  }
+};
