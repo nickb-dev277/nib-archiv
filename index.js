@@ -1338,7 +1338,6 @@ return new Response(
           }
         );
       }
-    )
     if (request.method === "POST") {
 
       const form =
