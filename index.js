@@ -327,28 +327,45 @@ if (request.method === "POST") {
             return new Response(
               adminPage("✅ Ordner umbenannt.", folders),
               {
-                headers: {
-                  "content-type": "text/html; charset=UTF-8"
-                }
-              }
-            );
-          }
-
-          if (action === "toggle_folder") {
+                if (action === "delete_folder") {
 
             const id = String(form.get("id") || "");
 
+            const countResult = await env.DB.prepare(`
+              SELECT COUNT(*) AS count
+              FROM texts
+              WHERE folder_id = ?
+              AND deleted_at IS NULL
+            `)
+            .bind(id)
+            .first();
+
+            const count = Number(countResult?.count || 0);
+
+            if (count > 0) {
+
+              const folders = await getFolders(env);
+
+              return new Response(
+                adminPage(
+                  `⚠️ Dieser Ordner enthält ${count} Text(e).`,
+                  folders
+                ),
+                {
+                  headers: {
+                    "content-type": "text/html; charset=UTF-8"
+                  }
+                }
+              );
+            }
+
             await env.DB.prepare(`
               UPDATE folders
-              SET is_private =
-                CASE
-                  WHEN is_private = 1 THEN 0
-                  ELSE 1
-                END,
-                updated_at = ?
+              SET deleted_at = ?, updated_at = ?
               WHERE id = ? AND deleted_at IS NULL
             `)
             .bind(
+              new Date().toISOString(),
               new Date().toISOString(),
               id
             )
@@ -357,11 +374,120 @@ if (request.method === "POST") {
             const folders = await getFolders(env);
 
             return new Response(
-              adminPage("✅ Sichtbarkeit geändert.", folders),
+              adminPage("🗑️ Ordner in den Papierkorb verschoben.", folders),
               {
                 headers: {
                   "content-type": "text/html; charset=UTF-8"
                 }
               }
-              );
+            );
           }
+
+          if (action === "create_text") {
+
+            const title = String(form.get("title") || "").trim();
+            const content = String(form.get("content") || "");
+            const folderId =
+              String(form.get("folder_id") || "") || null;
+
+            const visibility =
+              String(form.get("visibility") || "private");
+
+            const now = new Date().toISOString();
+            const id = crypto.randomUUID();
+
+            await env.DB.prepare(`
+              INSERT INTO texts
+              (id, title, content, folder_id, visibility,
+               special_password, created_at, updated_at, deleted_at)
+              VALUES (?, ?, ?, ?, ?, NULL, ?, ?, NULL)
+            `)
+            .bind(
+              id,
+              title,
+              content,
+              folderId,
+              visibility,
+              now,
+              now
+            )
+            .run();
+
+            const folders = await getFolders(env);
+
+            return new Response(
+              adminPage("✅ Text wurde gespeichert.", folders),
+              {
+                headers: {
+                  "content-type": "text/html; charset=UTF-8"
+                }
+              }
+            );
+          }
+        }
+
+        const folders = await getFolders(env);
+
+        return new Response(
+          adminPage("", folders),
+          {
+            headers: {
+              "content-type": "text/html; charset=UTF-8"
+            }
+          }
+        );
+      }
+    }
+
+    if (request.method === "POST") {
+
+      const form = await request.formData();
+      const action = String(form.get("action") || "");
+
+      if (action === "login") {
+
+        const password = String(form.get("password") || "");
+
+        if (password === env.ADMIN_PASSWORD) {
+
+          const newSession = crypto.randomUUID();
+
+          await env.SESSIONS.put(
+            newSession,
+            "admin",
+            {
+              expirationTtl: 60 * 60 * 24 * 7
+            }
+          );
+
+          return new Response(
+            adminPage(),
+            {
+              headers: {
+                "content-type": "text/html; charset=UTF-8",
+                "Set-Cookie":
+                  `nib_session=${newSession}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=604800`
+              }
+            }
+          );
+        }
+
+        return new Response(
+          loginPage("❌ Falsches Passwort."),
+          {
+            status: 401,
+            headers: {
+              "content-type": "text/html; charset=UTF-8"
+            }
+          }
+        );
+      }
+    }
+
+    return new Response(loginPage(), {
+      headers: {
+        "content-type": "text/html; charset=UTF-8"
+      }
+    });
+  }
+};
