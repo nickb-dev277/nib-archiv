@@ -367,7 +367,8 @@ function loginPage(message = "") {
 function adminPage(
   message = "",
   folders = [],
-  texts = []
+  texts = [],
+  openedText = null
 ) {
 
   const folderOptions = folders
@@ -538,6 +539,49 @@ function adminPage(
     </section>
 
 
+    <!-- Geöffneter Text -->
+
+    ${
+      openedText
+        ? `
+
+          <section id="geoeffneter-text">
+
+            <h2 class="section-title">
+              ${esc(openedText.title)}
+            </h2>
+
+            <div class="card">
+
+              <div class="folder-status">
+                ${
+                  openedText.visibility === "public"
+                    ? "Öffentlich"
+                    : openedText.visibility === "semi_private"
+                      ? "Halbprivat"
+                      : "Privat"
+                }
+              </div>
+
+              <div
+                style="
+                  white-space: pre-wrap;
+                  word-wrap: break-word;
+                  overflow-wrap: anywhere;
+                "
+              >
+                ${esc(openedText.content)}
+              </div>
+
+            </div>
+
+          </section>
+
+        `
+        : ""
+    }
+
+
     <!-- Neuer Text -->
 
     <section id="neuer-text">
@@ -664,6 +708,30 @@ function adminPage(
 
 
                 <div class="folder-actions">
+
+                  <form method="POST">
+
+                    <input
+                      type="hidden"
+                      name="action"
+                      value="open_text"
+                    >
+
+                    <input
+                      type="hidden"
+                      name="id"
+                      value="${esc(text.id)}"
+                    >
+
+                    <button
+                      type="submit"
+                      class="secondary"
+                    >
+                      Öffnen
+                    </button>
+
+                  </form>
+
 
                   <form method="POST">
 
@@ -937,7 +1005,6 @@ function adminPage(
 
   `);
 }
-
 
 // ─────────────────────────────────────
 // Session
@@ -1431,7 +1498,77 @@ if (action === "create_text") {
   );
 }
 
+          
+                // ───────────────────────────
+                // Text öffnen
+                // ───────────────────────────
 
+if (action === "open_text") {
+
+  const id =
+    String(
+      form.get("id") || ""
+    );
+
+  if (!id) {
+    const folders =
+      await getFolders(env);
+
+    const texts =
+      await getTexts(env);
+
+    return htmlResponse(
+      adminPage(
+        "Kein Text ausgewählt.",
+        folders,
+        texts
+      )
+    );
+  }
+
+  const text =
+    await env.DB.prepare(`
+      SELECT
+        id,
+        title,
+        content,
+        folder,
+        visibility,
+        created_at,
+        updated_at
+      FROM texts
+      WHERE
+        id = ?
+        AND deleted_at IS NULL
+    `)
+    .bind(id)
+    .first();
+
+  if (!text) {
+    const folders =
+      await getFolders(env);
+
+    const texts =
+      await getTexts(env);
+
+    return htmlResponse(
+      adminPage(
+        "Text nicht gefunden.",
+        folders,
+        texts
+      )
+    );
+  }
+
+  return htmlResponse(
+    adminPage(
+      "",
+      await getFolders(env),
+      await getTexts(env),
+      text
+    )
+  );
+}
           // ───────────────────────────
           // Text löschen
           // ───────────────────────────
