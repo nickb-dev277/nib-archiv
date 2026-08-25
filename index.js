@@ -7,6 +7,7 @@ function esc(value) {
     .replaceAll("'", "&#039;");
 }
 
+
 function page(content, title = "NiB") {
   return `<!doctype html>
 <html lang="de">
@@ -23,10 +24,15 @@ function page(content, title = "NiB") {
   --muted: #81796f;
   --line: #ddd6cc;
   --accent: #4d4943;
+  --danger: #7a4f4f;
 }
 
 * {
   box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
@@ -139,54 +145,8 @@ button.secondary {
 
 button.danger {
   background: transparent;
-  color: #7a4f4f;
+  color: var(--danger);
   border-color: #c9b4b4;
-}
-
-.folder {
-  padding: 22px 0;
-  border-top: 1px solid var(--line);
-}
-
-.folder:first-child {
-  border-top: 0;
-}
-
-.folder-name {
-  font-family: Georgia, serif;
-  font-size: 19px;
-}
-
-.folder-status {
-  margin: 3px 0 16px;
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.folder-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.folder-actions form {
-  display: flex;
-  gap: 8px;
-}
-
-.folder-actions input {
-  width: 180px;
-  padding: 9px 10px;
-}
-
-.create-folder {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 25px;
-}
-
-.create-folder input {
-  flex: 1;
 }
 
 .message {
@@ -205,33 +165,6 @@ button.danger {
   margin-bottom: 5px;
 }
 
-@media (max-width: 650px) {
-  main {
-    width: min(100% - 28px, 900px);
-    padding-top: 40px;
-  }
-
-  .logo {
-    font-size: 36px;
-  }
-
-  .card {
-    padding: 20px;
-  }
-
-  .create-folder {
-    flex-direction: column;
-  }
-
-  .folder-actions form {
-    width: 100%;
-    flex-wrap: wrap;
-  }
-
-  .folder-actions input {
-    width: 100%;
-  }
-}
 .dashboard-header {
   display: flex;
   justify-content: space-between;
@@ -294,23 +227,109 @@ button.danger {
   font-size: 14px;
 }
 
-.dashboard-placeholder h3 {
-  margin: 0 0 8px;
-  font-family: Georgia, serif;
-  font-size: 20px;
-  font-weight: 400;
+.folder {
+  padding: 22px 0;
+  border-top: 1px solid var(--line);
 }
 
-.dashboard-placeholder p {
-  margin: 0;
+.folder:first-child {
+  border-top: 0;
+}
+
+.folder-name {
+  font-family: Georgia, serif;
+  font-size: 19px;
+}
+
+.folder-status {
+  margin: 3px 0 16px;
   color: var(--muted);
+  font-size: 13px;
+}
+
+.folder-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.folder-actions form {
+  display: flex;
+  gap: 8px;
+}
+
+.folder-actions input {
+  width: 180px;
+  padding: 9px 10px;
+}
+
+.create-folder {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 25px;
+}
+
+.create-folder input {
+  flex: 1;
+}
+
+.text-content {
+  white-space: pre-wrap;
+  margin: 15px 0 20px;
+  color: var(--text);
+}
+
+.text-preview {
+  margin: 15px 0;
+  color: var(--muted);
+  white-space: pre-wrap;
+}
+
+.text-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.text-actions form {
+  margin: 0;
 }
 
 .muted {
   color: var(--muted);
 }
 
+.edit-card {
+  margin-top: 20px;
+}
+
 @media (max-width: 650px) {
+  main {
+    width: min(100% - 28px, 900px);
+    padding-top: 40px;
+  }
+
+  .logo {
+    font-size: 36px;
+  }
+
+  .card {
+    padding: 20px;
+  }
+
+  .create-folder {
+    flex-direction: column;
+  }
+
+  .folder-actions form {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .folder-actions input {
+    width: 100%;
+  }
+
   .dashboard-grid {
     grid-template-columns: 1fr;
   }
@@ -330,6 +349,7 @@ ${content}
 </html>`;
 }
 
+
 function loginPage(message = "") {
   return page(`
     <div class="login">
@@ -342,6 +362,7 @@ function loginPage(message = "") {
       <section class="card">
 
         <form method="POST">
+
           <input
             type="hidden"
             name="action"
@@ -362,24 +383,58 @@ function loginPage(message = "") {
           <button type="submit">
             Anmelden
           </button>
+
         </form>
 
-        ${message
-          ? `<p class="message">${esc(message)}</p>`
-          : ""}
+        ${
+          message
+            ? `<p class="message">${esc(message)}</p>`
+            : ""
+        }
+
       </section>
 
     </div>
   `);
 }
 
-function adminPage(message = "", folders = [], texts = []) {
 
-  const folderOptions = folders.map(folder => `
-    <option value="${esc(folder.id)}">
-      ${esc(folder.name)}
-    </option>
-  `).join("");
+function visibilityName(value) {
+  if (value === "public") {
+    return "Öffentlich";
+  }
+
+  if (value === "semi_private") {
+    return "Halbprivat";
+  }
+
+  return "Privat";
+}
+
+
+function adminPage(
+  message = "",
+  folders = [],
+  texts = [],
+  editText = null
+) {
+
+  const folderOptions = folders
+    .map(folder => `
+      <option
+        value="${esc(folder.id)}"
+        ${
+          editText &&
+          editText.folder === folder.id
+            ? "selected"
+            : ""
+        }
+      >
+        ${esc(folder.name)}
+      </option>
+    `)
+    .join("");
+
 
   return page(`
     <header class="dashboard-header">
@@ -390,6 +445,7 @@ function adminPage(message = "", folders = [], texts = []) {
       </div>
 
       <form method="POST">
+
         <input
           type="hidden"
           name="action"
@@ -402,21 +458,27 @@ function adminPage(message = "", folders = [], texts = []) {
         >
           Abmelden
         </button>
+
       </form>
 
     </header>
 
 
-    ${message
-      ? `<p class="message">${esc(message)}</p>`
-      : ""}
+    ${
+      message
+        ? `<p class="message">${esc(message)}</p>`
+        : ""
+    }
 
 
     <section>
 
       <div class="dashboard-grid">
 
-        <a class="dashboard-card" href="#texte">
+        <a
+          class="dashboard-card"
+          href="#texte"
+        >
           <span class="card-number">01</span>
           <h2>Texte</h2>
           <p>
@@ -426,7 +488,10 @@ function adminPage(message = "", folders = [], texts = []) {
         </a>
 
 
-        <a class="dashboard-card featured" href="#neuer-text">
+        <a
+          class="dashboard-card featured"
+          href="#neuer-text"
+        >
           <span class="card-number">02</span>
           <h2>Neuer Text</h2>
           <p>
@@ -436,7 +501,10 @@ function adminPage(message = "", folders = [], texts = []) {
         </a>
 
 
-        <a class="dashboard-card" href="#ordner">
+        <a
+          class="dashboard-card"
+          href="#ordner"
+        >
           <span class="card-number">03</span>
           <h2>Ordner</h2>
           <p>
@@ -446,27 +514,35 @@ function adminPage(message = "", folders = [], texts = []) {
         </a>
 
 
-        <a class="dashboard-card" href="#kommentare">
+        <a
+          class="dashboard-card"
+          href="#kommentare"
+        >
           <span class="card-number">04</span>
           <h2>Kommentare</h2>
           <p>
             Kommentare verwalten und
-            als Admin antworten.
+            später beantworten.
           </p>
         </a>
 
 
-        <a class="dashboard-card" href="#papierkorb">
+        <a
+          class="dashboard-card"
+          href="#papierkorb"
+        >
           <span class="card-number">05</span>
           <h2>Papierkorb</h2>
           <p>
-            Gelöschte Inhalte innerhalb
-            von 30 Tagen wiederherstellen.
+            Gelöschte Inhalte verwalten.
           </p>
         </a>
 
 
-        <a class="dashboard-card" href="#passwoerter">
+        <a
+          class="dashboard-card"
+          href="#passwoerter"
+        >
           <span class="card-number">06</span>
           <h2>Passwörter</h2>
           <p>
@@ -476,7 +552,10 @@ function adminPage(message = "", folders = [], texts = []) {
         </a>
 
 
-        <a class="dashboard-card" href="#einstellungen">
+        <a
+          class="dashboard-card"
+          href="#einstellungen"
+        >
           <span class="card-number">07</span>
           <h2>Einstellungen</h2>
           <p>
@@ -494,8 +573,7 @@ function adminPage(message = "", folders = [], texts = []) {
           <span class="card-number">08</span>
           <h2>Website</h2>
           <p>
-            Die öffentliche Seite
-            ansehen.
+            Die öffentliche Seite ansehen.
           </p>
         </a>
 
@@ -507,7 +585,11 @@ function adminPage(message = "", folders = [], texts = []) {
     <section id="neuer-text">
 
       <h2 class="section-title">
-        Neuer Text
+        ${
+          editText
+            ? "Text bearbeiten"
+            : "Neuer Text"
+        }
       </h2>
 
       <div class="card">
@@ -517,8 +599,25 @@ function adminPage(message = "", folders = [], texts = []) {
           <input
             type="hidden"
             name="action"
-            value="create_text"
+            value="${
+              editText
+                ? "update_text"
+                : "create_text"
+            }"
           >
+
+          ${
+            editText
+              ? `
+                <input
+                  type="hidden"
+                  name="id"
+                  value="${esc(editText.id)}"
+                >
+              `
+              : ""
+          }
+
 
           <label>
             Titel
@@ -527,6 +626,11 @@ function adminPage(message = "", folders = [], texts = []) {
               type="text"
               name="title"
               placeholder="Titel"
+              value="${
+                editText
+                  ? esc(editText.title)
+                  : ""
+              }"
               required
             >
           </label>
@@ -535,7 +639,7 @@ function adminPage(message = "", folders = [], texts = []) {
           <label>
             Ordner
 
-            <select name="folder_id">
+            <select name="folder">
 
               <option value="">
                 Ohne Ordner
@@ -552,15 +656,39 @@ function adminPage(message = "", folders = [], texts = []) {
 
             <select name="visibility">
 
-              <option value="public">
+              <option
+                value="public"
+                ${
+                  !editText ||
+                  editText.visibility === "public"
+                    ? "selected"
+                    : ""
+                }
+              >
                 Öffentlich
               </option>
 
-              <option value="semi_private">
+              <option
+                value="semi_private"
+                ${
+                  editText &&
+                  editText.visibility === "semi_private"
+                    ? "selected"
+                    : ""
+                }
+              >
                 Halbprivat
               </option>
 
-              <option value="private">
+              <option
+                value="private"
+                ${
+                  editText &&
+                  editText.visibility === "private"
+                    ? "selected"
+                    : ""
+                }
+              >
                 Privat
               </option>
 
@@ -575,13 +703,35 @@ function adminPage(message = "", folders = [], texts = []) {
               name="content"
               placeholder="Deinen Text schreiben..."
               required
-            ></textarea>
+            >${
+              editText
+                ? esc(editText.content)
+                : ""
+            }</textarea>
           </label>
 
 
           <button type="submit">
-            Text speichern
+            ${
+              editText
+                ? "Änderungen speichern"
+                : "Text speichern"
+            }
           </button>
+
+
+          ${
+            editText
+              ? `
+                <a
+                  href="#texte"
+                  style="margin-left:10px"
+                >
+                  Abbrechen
+                </a>
+              `
+              : ""
+          }
 
         </form>
 
@@ -598,62 +748,93 @@ function adminPage(message = "", folders = [], texts = []) {
 
       <div class="card">
 
-  ${
-    texts.length
-      ? texts.map(text => `
-        <div class="folder">
+        ${
+          texts.length
+            ? texts.map(text => `
+              <div class="folder">
 
-          <div class="folder-name">
-            ${esc(text.title)}
-          </div>
+                <div class="folder-name">
+                  ${esc(text.title)}
+                </div>
 
-          <div class="folder-status">
-            ${
-              text.visibility === "public"
-                ? "Öffentlich"
-                : text.visibility === "semi_private"
-                  ? "Halbprivat"
-                  : "Privat"
-            }
-          </div>
+                <div class="folder-status">
+                  ${visibilityName(text.visibility)}
+                </div>
 
-          <div class="folder-actions">
+                <div class="text-preview">
+                  ${esc(
+                    String(text.content || "")
+                      .slice(0, 220)
+                  )}
+                  ${
+                    String(text.content || "").length > 220
+                      ? "…"
+                      : ""
+                  }
+                </div>
 
-            <form method="POST">
+                <div class="text-actions">
 
-              <input
-                type="hidden"
-                name="action"
-                value="delete_text"
-              >
+                  <form method="POST">
 
-              <input
-                type="hidden"
-                name="id"
-                value="${esc(text.id)}"
-              >
+                    <input
+                      type="hidden"
+                      name="action"
+                      value="edit_text"
+                    >
 
-              <button
-                type="submit"
-                class="danger"
-              >
-                Löschen
-              </button>
+                    <input
+                      type="hidden"
+                      name="id"
+                      value="${esc(text.id)}"
+                    >
 
-            </form>
+                    <button
+                      type="submit"
+                      class="secondary"
+                    >
+                      Bearbeiten
+                    </button>
 
-          </div>
+                  </form>
 
-        </div>
-      `).join("")
-      : `
-        <p class="muted">
-          Noch keine Texte vorhanden.
-        </p>
-      `
-  }
 
-</div>
+                  <form method="POST">
+
+                    <input
+                      type="hidden"
+                      name="action"
+                      value="delete_text"
+                    >
+
+                    <input
+                      type="hidden"
+                      name="id"
+                      value="${esc(text.id)}"
+                    >
+
+                    <button
+                      type="submit"
+                      class="danger"
+                    >
+                      Löschen
+                    </button>
+
+                  </form>
+
+                </div>
+
+              </div>
+            `).join("")
+            : `
+              <p class="muted">
+                Noch keine Texte vorhanden.
+              </p>
+            `
+        }
+
+      </div>
+
     </section>
 
 
@@ -813,12 +994,12 @@ function adminPage(message = "", folders = [], texts = []) {
         Kommentare
       </h2>
 
-      <div class="card dashboard-placeholder">
-        <h3>Kommentarverwaltung</h3>
-        <p>
-          Kommentare löschen und als Admin
-          beantworten.
+      <div class="card">
+
+        <p class="muted">
+          Kommentarverwaltung kommt als nächstes.
         </p>
+
       </div>
 
     </section>
@@ -830,12 +1011,13 @@ function adminPage(message = "", folders = [], texts = []) {
         Papierkorb
       </h2>
 
-      <div class="card dashboard-placeholder">
-        <h3>Zuletzt gelöscht</h3>
-        <p>
-          Gelöschte Texte und Ordner werden
-          später 30 Tage lang aufbewahrt.
+      <div class="card">
+
+        <p class="muted">
+          Der Papierkorb wird als nächstes
+          mit eigener Tabelle erweitert.
         </p>
+
       </div>
 
     </section>
@@ -847,13 +1029,14 @@ function adminPage(message = "", folders = [], texts = []) {
         Passwörter
       </h2>
 
-      <div class="card dashboard-placeholder">
-        <h3>Zugriffsschutz</h3>
-        <p>
-          Hier verwalten wir später den
-          gemeinsamen Halbprivat-Code und
-          individuelle Passwörter für einzelne Texte.
+      <div class="card">
+
+        <p class="muted">
+          Hier können später Halbprivat-Codes
+          und individuelle Text-Passwörter
+          verwaltet werden.
         </p>
+
       </div>
 
     </section>
@@ -865,19 +1048,18 @@ function adminPage(message = "", folders = [], texts = []) {
         Einstellungen
       </h2>
 
-      <div class="card dashboard-placeholder">
-        <h3>Seiteneinstellungen</h3>
-        <p>
-          NiB-Name, Künstlername, Seitentitel,
-          Fußzeile und weitere Einstellungen.
+      <div class="card">
+
+        <p class="muted">
+          Seitentitel und weitere Einstellungen
+          werden später ergänzt.
         </p>
+
       </div>
 
     </section>
-
   `);
 }
-
 
 
 function getSession(request) {
@@ -911,6 +1093,7 @@ async function getFolders(env) {
   return result.results || [];
 }
 
+
 async function getTexts(env) {
 
   const result =
@@ -918,7 +1101,7 @@ async function getTexts(env) {
       SELECT
         id,
         title,
-        Content,
+        content,
         folder,
         visibility,
         password,
@@ -930,6 +1113,43 @@ async function getTexts(env) {
 
   return result.results || [];
 }
+
+
+async function getText(env, id) {
+
+  return await env.DB.prepare(`
+    SELECT
+      id,
+      title,
+      content,
+      folder,
+      visibility,
+      password,
+      updated_at,
+      created_at
+    FROM texts
+    WHERE id = ?
+    LIMIT 1
+  `)
+  .bind(id)
+  .first();
+}
+
+
+function htmlResponse(html, status = 200) {
+
+  return new Response(
+    html,
+    {
+      status,
+      headers: {
+        "content-type":
+          "text/html; charset=UTF-8"
+      }
+    }
+  );
+}
+
 
 export default {
 
@@ -947,14 +1167,34 @@ export default {
 
       if (valid === "admin") {
 
-
         if (request.method === "POST") {
 
           const form =
             await request.formData();
 
           const action =
-            String(form.get("action") || "");
+            String(
+              form.get("action") || ""
+            );
+
+
+          if (action === "logout") {
+
+            await env.SESSIONS.delete(session);
+
+            return new Response(
+              loginPage("Abgemeldet."),
+              {
+                headers: {
+                  "content-type":
+                    "text/html; charset=UTF-8",
+
+                  "Set-Cookie":
+                    "nib_session=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0"
+                }
+              }
+            );
+          }
 
 
           if (action === "create_folder") {
@@ -968,19 +1208,17 @@ export default {
             if (!name) {
 
               const folders =
-  await getFolders(env);
+                await getFolders(env);
 
-const texts =
-  await getTexts(env);
+              const texts =
+                await getTexts(env);
 
-return new Response(
-  adminPage("", folders, texts),
-                {
-                  headers: {
-                    "content-type":
-                      "text/html; charset=UTF-8"
-                  }
-                }
+              return htmlResponse(
+                adminPage(
+                  "Bitte einen Ordnernamen eingeben.",
+                  folders,
+                  texts
+                )
               );
             }
 
@@ -1016,18 +1254,16 @@ return new Response(
             const folders =
               await getFolders(env);
 
+            const texts =
+              await getTexts(env);
 
-            return new Response(
+
+            return htmlResponse(
               adminPage(
                 "Ordner erstellt.",
-                folders
-              ),
-              {
-                headers: {
-                  "content-type":
-                    "text/html; charset=UTF-8"
-                }
-              }
+                folders,
+                texts
+              )
             );
           }
 
@@ -1068,18 +1304,16 @@ return new Response(
             const folders =
               await getFolders(env);
 
+            const texts =
+              await getTexts(env);
 
-            return new Response(
+
+            return htmlResponse(
               adminPage(
                 "Ordner umbenannt.",
-                folders
-              ),
-              {
-                headers: {
-                  "content-type":
-                    "text/html; charset=UTF-8"
-                }
-              }
+                folders,
+                texts
+              )
             );
           }
 
@@ -1116,18 +1350,16 @@ return new Response(
             const folders =
               await getFolders(env);
 
+            const texts =
+              await getTexts(env);
 
-            return new Response(
+
+            return htmlResponse(
               adminPage(
                 "Sichtbarkeit geändert.",
-                folders
-              ),
-              {
-                headers: {
-                  "content-type":
-                    "text/html; charset=UTF-8"
-                }
-              }
+                folders,
+                texts
+              )
             );
           }
 
@@ -1145,9 +1377,7 @@ return new Response(
                 SELECT
                   COUNT(*) AS count
                 FROM texts
-                WHERE
-                  folder_id = ?
-                  AND deleted_at IS NULL
+                WHERE folder = ?
               `)
               .bind(id)
               .first();
@@ -1162,18 +1392,16 @@ return new Response(
               const folders =
                 await getFolders(env);
 
+              const texts =
+                await getTexts(env);
 
-              return new Response(
+
+              return htmlResponse(
                 adminPage(
-                  `Dieser Ordner enthält ${count} Text(e). Die Auswahl zum Behalten oder Löschen der Texte bauen wir als Nächstes ein.`,
-                  folders
-                ),
-                {
-                  headers: {
-                    "content-type":
-                      "text/html; charset=UTF-8"
-                  }
-                }
+                  `Dieser Ordner enthält ${count} Text(e). Verschiebe die Texte zuerst in einen anderen Ordner oder auf "Ohne Ordner".`,
+                  folders,
+                  texts
+                )
               );
             }
 
@@ -1198,20 +1426,21 @@ return new Response(
             const folders =
               await getFolders(env);
 
+            const texts =
+              await getTexts(env);
 
-            return new Response(
+
+            return htmlResponse(
               adminPage(
-                "Ordner in den Papierkorb verschoben.",
-                folders
-              ),
-              {
-                headers: {
-                  "content-type":
-                    "text/html; charset=UTF-8"
-                }
-              }
+                "Ordner gelöscht.",
+                folders,
+                texts
+              )
             );
-          }          if (action === "create_text") {
+          }
+
+
+          if (action === "create_text") {
 
             const title =
               String(
@@ -1227,7 +1456,7 @@ return new Response(
 
             const folder =
               String(
-                form.get("folder_id") || ""
+                form.get("folder") || ""
               ) || null;
 
 
@@ -1236,6 +1465,25 @@ return new Response(
                 form.get("visibility") ||
                 "private"
               );
+
+
+            if (!title || !content) {
+
+              const folders =
+                await getFolders(env);
+
+              const texts =
+                await getTexts(env);
+
+
+              return htmlResponse(
+                adminPage(
+                  "Titel und Inhalt dürfen nicht leer sein.",
+                  folders,
+                  texts
+                )
+              );
+            }
 
 
             if (
@@ -1249,18 +1497,16 @@ return new Response(
               const folders =
                 await getFolders(env);
 
+              const texts =
+                await getTexts(env);
 
-              return new Response(
+
+              return htmlResponse(
                 adminPage(
                   "Ungültige Sichtbarkeit.",
-                  folders
-                ),
-                {
-                  headers: {
-                    "content-type":
-                      "text/html; charset=UTF-8"
-                  }
-                }
+                  folders,
+                  texts
+                )
               );
             }
 
@@ -1283,42 +1529,212 @@ return new Response(
                 password,
                 created_at,
                 updated_at
-          )
-          VALUES
-          (?, ?, ?, ?, ?, NULL, ?, ?)
-`)
-.bind(
-        id,
-        title,
-        content,
-        folder,
-        visibility,
-        now,
-        now
-  )
-.run();
+              )
+              VALUES (?, ?, ?, ?, ?, NULL, ?, ?)
+            `)
+            .bind(
+              id,
+              title,
+              content,
+              folder,
+              visibility,
+              now,
+              now
+            )
+            .run();
+
+
             const folders =
               await getFolders(env);
 
-
-          const texts =
- 
-            await getTexts(env);
+            const texts =
+              await getTexts(env);
 
 
-            return new Response(
-            adminPage(
-            "Text gespeichert.",
-            folders,
-              texts
-  ),
-            
-              {
-                headers: {
-                  "content-type":
-                    "text/html; charset=UTF-8"
-                }
-              }
+            return htmlResponse(
+              adminPage(
+                "Text gespeichert.",
+                folders,
+                texts
+              )
+            );
+          }
+
+
+          if (action === "edit_text") {
+
+            const id =
+              String(
+                form.get("id") || ""
+              );
+
+
+            const text =
+              await getText(env, id);
+
+
+            const folders =
+              await getFolders(env);
+
+            const texts =
+              await getTexts(env);
+
+
+            if (!text) {
+
+              return htmlResponse(
+                adminPage(
+                  "Text nicht gefunden.",
+                  folders,
+                  texts
+                ),
+                404
+              );
+            }
+
+
+            return htmlResponse(
+              adminPage(
+                "",
+                folders,
+                texts,
+                text
+              )
+            );
+          }
+
+
+          if (action === "update_text") {
+
+            const id =
+              String(
+                form.get("id") || ""
+              );
+
+
+            const title =
+              String(
+                form.get("title") || ""
+              ).trim();
+
+
+            const content =
+              String(
+                form.get("content") || ""
+              );
+
+
+            const folder =
+              String(
+                form.get("folder") || ""
+              ) || null;
+
+
+            const visibility =
+              String(
+                form.get("visibility") ||
+                "private"
+              );
+
+
+            if (
+              !id ||
+              !title ||
+              !content ||
+              ![
+                "public",
+                "semi_private",
+                "private"
+              ].includes(visibility)
+            ) {
+
+              const folders =
+                await getFolders(env);
+
+              const texts =
+                await getTexts(env);
+
+
+              return htmlResponse(
+                adminPage(
+                  "Die Eingaben sind ungültig.",
+                  folders,
+                  texts
+                )
+              );
+            }
+
+
+            await env.DB.prepare(`
+              UPDATE texts
+              SET
+                title = ?,
+                content = ?,
+                folder = ?,
+                visibility = ?,
+                updated_at = ?
+              WHERE id = ?
+            `)
+            .bind(
+              title,
+              content,
+              folder,
+              visibility,
+              new Date().toISOString(),
+              id
+            )
+            .run();
+
+
+            const folders =
+              await getFolders(env);
+
+            const texts =
+              await getTexts(env);
+
+
+            return htmlResponse(
+              adminPage(
+                "Text aktualisiert.",
+                folders,
+                texts
+              )
+            );
+          }
+
+
+          if (action === "delete_text") {
+
+            const id =
+              String(
+                form.get("id") || ""
+              );
+
+
+            if (id) {
+
+              await env.DB.prepare(`
+                DELETE FROM texts
+                WHERE id = ?
+              `)
+              .bind(id)
+              .run();
+            }
+
+
+            const folders =
+              await getFolders(env);
+
+            const texts =
+              await getTexts(env);
+
+
+            return htmlResponse(
+              adminPage(
+                "Text gelöscht.",
+                folders,
+                texts
+              )
             );
           }
         }
@@ -1327,17 +1743,21 @@ return new Response(
         const folders =
           await getFolders(env);
 
+        const texts =
+          await getTexts(env);
 
-        return new Response(
-          adminPage("", folders),
-          {
-            headers: {
-              "content-type":
-                "text/html; charset=UTF-8"
-            }
-          }
+
+        return htmlResponse(
+          adminPage(
+            "",
+            folders,
+            texts
+          )
         );
       }
+    }
+
+
     if (request.method === "POST") {
 
       const form =
@@ -1372,13 +1792,24 @@ return new Response(
             "admin",
             {
               expirationTtl:
-                60 * 60 * 24 * 1
+                60 * 60 * 24 * 7
             }
           );
 
 
+          const folders =
+            await getFolders(env);
+
+          const texts =
+            await getTexts(env);
+
+
           return new Response(
-            adminPage(),
+            adminPage(
+              "",
+              folders,
+              texts
+            ),
             {
               headers: {
                 "content-type":
@@ -1398,7 +1829,6 @@ return new Response(
           ),
           {
             status: 401,
-
             headers: {
               "content-type":
                 "text/html; charset=UTF-8"
