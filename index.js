@@ -1275,18 +1275,18 @@ return new Response(
             await env.DB.prepare(`
               INSERT INTO texts
               (
-              id,
-              title,
-              content,
-              folder,
-              visibility,
-              password,
-              created_at,
-              updated_at
+                id,
+                title,
+                content,
+                folder,
+                visibility,
+                password,
+                created_at,
+                updated_at
           )
           VALUES
           (?, ?, ?, ?, ?, NULL, ?, ?)
-            )
+         )
     .bind(
         id,
         title,
@@ -1296,9 +1296,7 @@ return new Response(
         now,
         now
   )
-
 .run();
-
             const folders =
               await getFolders(env);
 
@@ -1341,8 +1339,7 @@ return new Response(
         );
       }
     }
-
-
+)
     if (request.method === "POST") {
 
       const form =
@@ -1377,7 +1374,7 @@ return new Response(
             "admin",
             {
               expirationTtl:
-                60 * 60 * 24 * 7
+                60 * 60 * 24 * 1
             }
           );
 
