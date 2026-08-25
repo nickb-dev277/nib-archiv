@@ -1,3 +1,126 @@
+function html(text) {
+  return String(text)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function layout(content, title = "NiB – Verwaltung") {
+  return `<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${html(title)}</title>
+<style>
+body {
+  margin: 0;
+  background: #f3efe8;
+  color: #29251f;
+  font-family: Georgia, serif;
+}
+
+main {
+  max-width: 900px;
+  margin: 40px auto;
+  padding: 30px 20px;
+}
+
+h1 {
+  font-size: 40px;
+  letter-spacing: .12em;
+}
+
+section {
+  background: #fbf9f5;
+  border: 1px solid #d8d0c5;
+  padding: 20px;
+  margin-top: 25px;
+}
+
+input, textarea, select, button {
+  font: inherit;
+  padding: 10px;
+  margin-top: 8px;
+}
+
+input, textarea, select {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+textarea {
+  min-height: 300px;
+  resize: vertical;
+}
+
+button {
+  cursor: pointer;
+}
+
+.folder {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  border-top: 1px solid #ddd5ca;
+  padding: 15px 0;
+}
+
+.folder-name {
+  flex: 1;
+}
+
+.small {
+  font-size: .9em;
+  opacity: .75;
+}
+
+.message {
+  padding: 12px;
+  background: #eee8df;
+  margin-top: 20px;
+}
+</style>
+</head>
+
+<body>
+<main>
+
+<h1>NiB</h1>
+<p>Verwaltung</p>
+
+${content}
+
+</main>
+</body>
+</html>`;
+}
+
+function loginPage(message = "") {
+  return layout(`
+<section>
+<h2>Anmelden</h2>
+
+<form method="POST">
+<input type="hidden" name="action" value="login">
+
+<input
+  type="password"
+  name="password"
+  placeholder="Admin-Passwort"
+  required
+>
+
+<button type="submit">Anmelden</button>
+</form>
+
+${message ? `<p class="message">${html(message)}</p>` : ""}
+</section>
+`);
+}
+
 function adminPage(message = "", folders = []) {
   const folderList = folders.length
     ? folders.map(folder => `
@@ -119,6 +242,7 @@ Inhalt
 </section>
 `);
 }
+
 async function getFolders(env) {
   const result = await env.DB.prepare(`
     SELECT id, name, is_private
@@ -150,8 +274,9 @@ export default {
 
       const valid = await env.SESSIONS.get(session);
 
-      if (valid === "admin")
-      {if (request.method === "POST") {
+      if (valid === "admin") {
+
+        if (request.method === "POST") {
 
           const form = await request.formData();
           const action = String(form.get("action") || "");
@@ -202,6 +327,7 @@ export default {
             const name = String(form.get("name") || "").trim();
 
             if (id && name) {
+
               await env.DB.prepare(`
                 UPDATE folders
                 SET name = ?, updated_at = ?
@@ -249,52 +375,8 @@ export default {
 
             const folders = await getFolders(env);
 
-return new Response(
-  adminPage("✅ Sichtbarkeit geändert.", folders),
-  {
-    headers: {
-      "content-type": "text/html; charset=UTF-8"
-    }
-  }
-);
-
-if (request.method === "POST") {
-
-  const form = await request.formData();
-  const action = String(form.get("action") || "");
-
-  if (action === "create_folder") {
-
-    const name = String(form.get("name") || "").trim();
-
-            if (!name) {
-              const folders = await getFolders(env);
-
-              return new Response(
-                adminPage("❌ Der Ordner braucht einen Namen.", folders),
-                {
-                  headers: {
-                    "content-type": "text/html; charset=UTF-8"
-                  }
-                }
-              );
-            }
-
-            const id = crypto.randomUUID();
-            const now = new Date().toISOString();
-
-            await env.DB.prepare(`
-              INSERT INTO folders
-              (id, name, is_private, created_at, updated_at, deleted_at)
-              VALUES (?, ?, 0, ?, ?, NULL)
-            `)
-            .bind(id, name, now, now)
-            .run();
-
-            const folders = await getFolders(env);
-
             return new Response(
-              adminPage("✅ Ordner erstellt.", folders),
+              adminPage("✅ Sichtbarkeit geändert.", folders),
               {
                 headers: {
                   "content-type": "text/html; charset=UTF-8"
@@ -303,31 +385,7 @@ if (request.method === "POST") {
             );
           }
 
-          if (action === "rename_folder") {
-
-            const id = String(form.get("id") || "");
-            const name = String(form.get("name") || "").trim();
-
-            if (id && name) {
-              await env.DB.prepare(`
-                UPDATE folders
-                SET name = ?, updated_at = ?
-                WHERE id = ? AND deleted_at IS NULL
-              `)
-              .bind(
-                name,
-                new Date().toISOString(),
-                id
-              )
-              .run();
-            }
-
-            const folders = await getFolders(env);
-
-            return new Response(
-              adminPage("✅ Ordner umbenannt.", folders),
-              {
-                if (action === "delete_folder") {
+          if (action === "delete_folder") {
 
             const id = String(form.get("id") || "");
 
@@ -348,7 +406,7 @@ if (request.method === "POST") {
 
               return new Response(
                 adminPage(
-                  `⚠️ Dieser Ordner enthält ${count} Text(e).`,
+                  `⚠️ Dieser Ordner enthält ${count} Text(e). Wir löschen ihn noch nicht. Beim nächsten Schritt bauen wir hier die Auswahl „Texte behalten“ oder „Texte ebenfalls löschen“ ein.`,
                   folders
                 ),
                 {
@@ -363,7 +421,7 @@ if (request.method === "POST") {
               UPDATE folders
               SET deleted_at = ?, updated_at = ?
               WHERE id = ? AND deleted_at IS NULL
-            `))
+            `)
             .bind(
               new Date().toISOString(),
               new Date().toISOString(),
@@ -387,11 +445,24 @@ if (request.method === "POST") {
 
             const title = String(form.get("title") || "").trim();
             const content = String(form.get("content") || "");
-            const folderId =
-              String(form.get("folder_id") || "") || null;
+            const folderId = String(form.get("folder_id") || "") || null;
+            const visibility = String(
+              form.get("visibility") || "private"
+            );
 
-            const visibility =
-              String(form.get("visibility") || "private");
+            if (!["public", "semi_private", "private"].includes(visibility)) {
+
+              const folders = await getFolders(env);
+
+              return new Response(
+                adminPage("❌ Ungültige Sichtbarkeit.", folders),
+                {
+                  headers: {
+                    "content-type": "text/html; charset=UTF-8"
+                  }
+                }
+              );
+            }
 
             const now = new Date().toISOString();
             const id = crypto.randomUUID();
