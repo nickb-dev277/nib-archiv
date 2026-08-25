@@ -1315,8 +1315,7 @@ export default {
             );
           }
 
-
-          // ───────────────────────────
+// ───────────────────────────
 // Text erstellen
 // ───────────────────────────
 
@@ -1343,11 +1342,26 @@ if (action === "create_text") {
     );
 
 
-  // ───────────────────────
   // Eingaben prüfen
-  // ───────────────────────
 
   if (!title) {
+
+    const folders =
+      await getFolders(env);
+
+    const texts =
+      await getTexts(env);
+
+    return htmlResponse(
+      adminPage(
+        "Bitte einen Titel eingeben.",
+        folders,
+        texts
+      )
+    );
+  }
+
+
   if (
     ![
       "public",
@@ -1375,18 +1389,6 @@ if (action === "create_text") {
   const now =
     new Date().toISOString();
 
-  // ───────────────────────
-  // TEXT IN D1 SPEICHERN
-  // ───────────────────────
-  //
-  // WICHTIG:
-  // Die Spalte "id" wird NICHT
-  // mit crypto.randomUUID()
-  // befüllt.
-  //
-  // D1/SQLite erzeugt die
-  // INTEGER-Primary-Key-ID selbst.
-  // ───────────────────────
 
   await env.DB.prepare(`
     INSERT INTO texts
@@ -1428,26 +1430,6 @@ if (action === "create_text") {
     )
   );
 }
-
-
-            // ───────────────────────
-            // TEXT IN D1 SPEICHERN
-            // ───────────────────────
-              const folders =
-              await getFolders(env);
-
-            const texts =
-              await getTexts(env);
-
-
-            return htmlResponse(
-              adminPage(
-                "Text gespeichert.",
-                folders,
-                texts
-              )
-            );
-          }
 
 
           // ───────────────────────────
