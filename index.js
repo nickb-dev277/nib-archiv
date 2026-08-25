@@ -373,7 +373,7 @@ function loginPage(message = "") {
   `);
 }
 
-function adminPage(message = "", folders = []) {
+function adminPage(message = "", folders = [], texts = []) {
 
   const folderOptions = folders.map(folder => `
     <option value="${esc(folder.id)}">
@@ -596,15 +596,64 @@ function adminPage(message = "", folders = []) {
         Texte
       </h2>
 
-      <div class="card dashboard-placeholder">
-        <h3>Textverwaltung</h3>
-        <p>
-          Hier kommen als Nächstes deine vorhandenen
-          Texte mit Bearbeiten, Verschieben,
-          Sichtbarkeit und Löschen hin.
-        </p>
-      </div>
+      <div class="card">
 
+  ${
+    texts.length
+      ? texts.map(text => `
+        <div class="folder">
+
+          <div class="folder-name">
+            ${esc(text.title)}
+          </div>
+
+          <div class="folder-status">
+            ${
+              text.visibility === "public"
+                ? "Öffentlich"
+                : text.visibility === "semi_private"
+                  ? "Halbprivat"
+                  : "Privat"
+            }
+          </div>
+
+          <div class="folder-actions">
+
+            <form method="POST">
+
+              <input
+                type="hidden"
+                name="action"
+                value="delete_text"
+              >
+
+              <input
+                type="hidden"
+                name="id"
+                value="${esc(text.id)}"
+              >
+
+              <button
+                type="submit"
+                class="danger"
+              >
+                Löschen
+              </button>
+
+            </form>
+
+          </div>
+
+        </div>
+      `).join("")
+      : `
+        <p class="muted">
+          Noch keine Texte vorhanden.
+        </p>
+      `
+  }
+
+</div>
     </section>
 
 
@@ -861,7 +910,26 @@ async function getFolders(env) {
 
   return result.results || [];
 }
+async function getTexts(env) {
 
+  const result =
+    await env.DB.prepare(`
+      SELECT
+        id,
+        title,
+        content,
+        folder_id,
+        visibility,
+        special_password,
+        created_at,
+        updated_at
+      FROM texts
+      WHERE deleted_at IS NULL
+      ORDER BY updated_at DESC
+    `).all();
+
+  return result.results || [];
+}
 
 export default {
 
@@ -900,13 +968,13 @@ export default {
             if (!name) {
 
               const folders =
-                await getFolders(env);
+  await getFolders(env);
 
-              return new Response(
-                adminPage(
-                  "Bitte einen Ordnernamen eingeben.",
-                  folders
-                ),
+const texts =
+  await getTexts(env);
+
+return new Response(
+  adminPage("", folders, texts),
                 {
                   headers: {
                     "content-type":
@@ -1236,11 +1304,18 @@ export default {
               await getFolders(env);
 
 
+          const texts =
+ 
+            await getTexts(env);
+
+
             return new Response(
-              adminPage(
-                "Text gespeichert.",
-                folders
-              ),
+            adminPage(
+            "Text gespeichert.",
+            folders,
+              texts
+  ),
+            
               {
                 headers: {
                   "content-type":
