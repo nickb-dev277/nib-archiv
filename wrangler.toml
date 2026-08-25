@@ -42,4 +42,4 @@ persist = true
 head_sampling_rate = 1
 
 [vars]
-CLOUDINARY_CLOUD_NAME = "DEIN_CLOUD_NAME"
+CLOUDINARY_CLOUD_NAME = "r9tk5wns"
