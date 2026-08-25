@@ -1393,8 +1393,7 @@ export default {
             }
 
 
-            const id =
-              crypto.randomUUID();
+            // D1 vergibt die INTEGER-ID automatisch
 
             const now =
               new Date().toISOString();
@@ -1407,7 +1406,6 @@ export default {
             await env.DB.prepare(`
               INSERT INTO texts
               (
-                id,
                 title,
                 content,
                 folder,
@@ -1416,10 +1414,9 @@ export default {
                 updated_at,
                 created_at
               )
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+              VALUES (?, ?, ?, ?, ?, ?, ?,)
             `)
             .bind(
-              id,
               title,
               content,
               folder,
