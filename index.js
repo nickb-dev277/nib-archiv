@@ -1362,7 +1362,7 @@ if (action === "create_text") {
         texts
       )
     );
-  }
+  
 
 
   if (
@@ -1541,7 +1541,7 @@ if (action === "create_text") {
               )
             );
           }
-        }
+        
 
 
         // ─────────────────────────
