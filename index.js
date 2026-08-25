@@ -910,6 +910,7 @@ async function getFolders(env) {
 
   return result.results || [];
 }
+
 async function getTexts(env) {
 
   const result =
@@ -917,14 +918,13 @@ async function getTexts(env) {
       SELECT
         id,
         title,
-        content,
-        folder_id,
+        Content,
+        folder,
         visibility,
-        special_password,
-        created_at,
-        updated_at
+        Password,
+        updated_at,
+        created_at
       FROM texts
-      WHERE deleted_at IS NULL
       ORDER BY updated_at DESC
     `).all();
 
@@ -1273,32 +1273,30 @@ return new Response(
 
 
             await env.DB.prepare(`
-              INSERT INTO texts
-              (
-                id,
-                title,
-                content,
-                folder_id,
-                visibility,
-                special_password,
-                created_at,
-                updated_at,
-                deleted_at
-              )
-              VALUES
-              (?, ?, ?, ?, ?, NULL, ?, ?, NULL)
-            `)
-            .bind(
-              id,
-              title,
-              content,
-              folderId,
-              visibility,
-              now,
-              now
-            )
-            .run();
-
+  INSERT INTO texts
+  (
+    id,
+    title,
+    Content,
+    folder,
+    visibility,
+    Password,
+    created_at,
+    updated_at
+  )
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+`)
+.bind(
+  id,
+  title,
+  content,
+  folderId,
+  visibility,
+  null,
+  now,
+  now
+)
+.run();
 
             const folders =
               await getFolders(env);
