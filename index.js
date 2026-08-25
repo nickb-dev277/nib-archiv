@@ -1317,86 +1317,135 @@ export default {
 
 
           // ───────────────────────────
-          // Text erstellen
-          // ───────────────────────────
+// Text erstellen
+// ───────────────────────────
 
-          if (action === "create_text") {
+if (action === "create_text") {
 
-            const title =
-              String(
-                form.get("title") || ""
-              ).trim();
+  const title =
+    String(
+      form.get("title") || ""
+    ).trim();
 
+  const content =
+    String(
+      form.get("content") || ""
+    );
 
-            const content =
-              String(
-                form.get("content") || ""
-              );
+  const folder =
+    String(
+      form.get("folder") || ""
+    ).trim();
 
-
-            // WICHTIG:
-            // Die Datenbankspalte heißt "folder".
-            // Deshalb benutzen wir hier ebenfalls "folder".
-
-            const folder =
-              String(
-                form.get("folder") || ""
-              ) || null;
-
-
-            const visibility =
-              String(
-                form.get("visibility") ||
-                "private"
-              );
+  const visibility =
+    String(
+      form.get("visibility") || "private"
+    );
 
 
-            if (!title) {
+  // ───────────────────────
+  // Eingaben prüfen
+  // ───────────────────────
 
-              const folders =
-                await getFolders(env);
+  if (!title) {
 
-              const texts =
-                await getTexts(env);
+    const folders =
+      await getFolders(env);
 
-              return htmlResponse(
-                adminPage(
-                  "Bitte einen Titel eingeben.",
-                  folders,
-                  texts
-                )
-              );
-            }
+    const texts =
+      await getTexts(env);
 
-
-            if (
-              ![
-                "public",
-                "semi_private",
-                "private"
-              ].includes(visibility)
-            ) {
-
-              const folders =
-                await getFolders(env);
-
-              const texts =
-                await getTexts(env);
-
-              return htmlResponse(
-                adminPage(
-                  "Ungültige Sichtbarkeit.",
-                  folders,
-                  texts
-                )
-              );
-            }
+    return htmlResponse(
+      adminPage(
+        "Bitte einen Titel eingeben.",
+        folders,
+        texts
+      )
+    );
+  }
 
 
-            // D1 vergibt die INTEGER-ID automatisch
+  if (
+    ![
+      "public",
+      "semi_private",
+      "private"
+    ].includes(visibility)
+  ) {
 
-            const now =
-              new Date().toISOString();
+    const folders =
+      await getFolders(env);
+
+    const texts =
+      await getTexts(env);
+
+    return htmlResponse(
+      adminPage(
+        "Ungültige Sichtbarkeit.",
+        folders,
+        texts
+      )
+    );
+  }
+
+
+  const now =
+    new Date().toISOString();
+
+
+  // ───────────────────────
+  // TEXT IN D1 SPEICHERN
+  // ───────────────────────
+  //
+  // WICHTIG:
+  // Die Spalte "id" wird NICHT
+  // mit crypto.randomUUID()
+  // befüllt.
+  //
+  // D1/SQLite erzeugt die
+  // INTEGER-Primary-Key-ID selbst.
+  // ───────────────────────
+
+  await env.DB.prepare(`
+    INSERT INTO texts
+    (
+      title,
+      content,
+      folder,
+      visibility,
+      password,
+      updated_at,
+      created_at
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `)
+  .bind(
+    title,
+    content,
+    folder || "Fragmente",
+    visibility,
+    null,
+    now,
+    now
+  )
+  .run();
+
+
+  const folders =
+    await getFolders(env);
+
+  const texts =
+    await getTexts(env);
+
+
+  return htmlResponse(
+    adminPage(
+      "Text gespeichert.",
+      folders,
+      texts
+    )
+  );
+}
 
 
             // ───────────────────────
