@@ -40,3 +40,6 @@ invocation_logs = true
 enabled = false
 persist = true
 head_sampling_rate = 1
+
+[vars]
+CLOUDINARY_CLOUD_NAME = "DEIN_CLOUD_NAME"
