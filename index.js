@@ -1225,7 +1225,7 @@ return new Response(
               );
 
 
-            const folderId =
+            const folder =
               String(
                 form.get("folder_id") || ""
               ) || null;
@@ -1286,8 +1286,8 @@ return new Response(
           )
           VALUES
           (?, ?, ?, ?, ?, NULL, ?, ?)
-         )
-    .bind(
+`)
+.bind(
         id,
         title,
         content,
@@ -1338,8 +1338,7 @@ return new Response(
           }
         );
       }
-    }
-)
+    
     if (request.method === "POST") {
 
       const form =
