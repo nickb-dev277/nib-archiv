@@ -1609,4 +1609,5 @@ if (action === "create_text") {
       loginPage()
     );
   }
+  }
 };
