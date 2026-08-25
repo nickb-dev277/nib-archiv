@@ -287,108 +287,7 @@ function loginPage(message = "") {
   `);
 }
 
-
 function adminPage(message = "", folders = []) {
-
-  const folderHtml = folders.length
-    ? folders.map(folder => `
-      <div class="folder">
-
-        <div class="folder-name">
-          ${esc(folder.name)}
-        </div>
-
-        <div class="folder-status">
-          ${
-            folder.is_private
-              ? "Privater Ordner"
-              : "Öffentlicher Ordner"
-          }
-        </div>
-
-        <div class="folder-actions">
-
-          <form method="POST">
-            <input
-              type="hidden"
-              name="action"
-              value="rename_folder"
-            >
-
-            <input
-              type="hidden"
-              name="id"
-              value="${esc(folder.id)}"
-            >
-
-            <input
-              type="text"
-              name="name"
-              placeholder="Neuer Name"
-              required
-            >
-
-            <button
-              type="submit"
-              class="secondary"
-            >
-              Umbenennen
-            </button>
-          </form>
-
-          <form method="POST">
-            <input
-              type="hidden"
-              name="action"
-              value="toggle_folder"
-            >
-
-            <input
-              type="hidden"
-              name="id"
-              value="${esc(folder.id)}"
-            >
-
-            <button
-              type="submit"
-              class="secondary"
-            >
-              ${
-                folder.is_private
-                  ? "Öffentlich stellen"
-                  : "Privat stellen"
-              }
-            </button>
-          </form>
-
-          <form method="POST">
-            <input
-              type="hidden"
-              name="action"
-              value="delete_folder"
-            >
-
-            <input
-              type="hidden"
-              name="id"
-              value="${esc(folder.id)}"
-            >
-
-            <button
-              type="submit"
-              class="danger"
-            >
-              Löschen
-            </button>
-          </form>
-
-        </div>
-      </div>
-    `).join("")
-    : `<p style="color:var(--muted)">
-        Noch keine Ordner vorhanden.
-      </p>`;
-
 
   const folderOptions = folders.map(folder => `
     <option value="${esc(folder.id)}">
@@ -396,12 +295,31 @@ function adminPage(message = "", folders = []) {
     </option>
   `).join("");
 
-
   return page(`
-    <header>
-      <h1 class="logo">NiB</h1>
-      <p class="subtitle">Verwaltung</p>
+    <header class="dashboard-header">
+
+      <div>
+        <p class="subtitle">Admin-Bereich</p>
+        <h1 class="logo">NiB</h1>
+      </div>
+
+      <form method="POST">
+        <input
+          type="hidden"
+          name="action"
+          value="logout"
+        >
+
+        <button
+          type="submit"
+          class="secondary"
+        >
+          Abmelden
+        </button>
+      </form>
+
     </header>
+
 
     ${message
       ? `<p class="message">${esc(message)}</p>`
@@ -410,41 +328,97 @@ function adminPage(message = "", folders = []) {
 
     <section>
 
-      <h2 class="section-title">
-        Ordner
-      </h2>
+      <div class="dashboard-grid">
 
-      <div class="card">
+        <a class="dashboard-card" href="#texte">
+          <span class="card-number">01</span>
+          <h2>Texte</h2>
+          <p>
+            Vorhandene Texte ansehen,
+            bearbeiten und verwalten.
+          </p>
+        </a>
 
-        <form
-          method="POST"
-          class="create-folder"
+
+        <a class="dashboard-card featured" href="#neuer-text">
+          <span class="card-number">02</span>
+          <h2>Neuer Text</h2>
+          <p>
+            Gedichte, Texte oder Fragmente
+            direkt hinzufügen.
+          </p>
+        </a>
+
+
+        <a class="dashboard-card" href="#ordner">
+          <span class="card-number">03</span>
+          <h2>Ordner</h2>
+          <p>
+            Ordner erstellen, umbenennen
+            und ihre Sichtbarkeit ändern.
+          </p>
+        </a>
+
+
+        <a class="dashboard-card" href="#kommentare">
+          <span class="card-number">04</span>
+          <h2>Kommentare</h2>
+          <p>
+            Kommentare verwalten und
+            als Admin antworten.
+          </p>
+        </a>
+
+
+        <a class="dashboard-card" href="#papierkorb">
+          <span class="card-number">05</span>
+          <h2>Papierkorb</h2>
+          <p>
+            Gelöschte Inhalte innerhalb
+            von 30 Tagen wiederherstellen.
+          </p>
+        </a>
+
+
+        <a class="dashboard-card" href="#passwoerter">
+          <span class="card-number">06</span>
+          <h2>Passwörter</h2>
+          <p>
+            Halbprivate Inhalte und
+            spezielle Text-Passwörter.
+          </p>
+        </a>
+
+
+        <a class="dashboard-card" href="#einstellungen">
+          <span class="card-number">07</span>
+          <h2>Einstellungen</h2>
+          <p>
+            Seitentitel, Künstlername
+            und weitere Einstellungen.
+          </p>
+        </a>
+
+
+        <a
+          class="dashboard-card"
+          href="/"
+          target="_blank"
         >
-          <input
-            type="hidden"
-            name="action"
-            value="create_folder"
-          >
-
-          <input
-            type="text"
-            name="name"
-            placeholder="Neuer Ordner"
-            required
-          >
-
-          <button type="submit">
-            Erstellen
-          </button>
-        </form>
-
-        ${folderHtml}
+          <span class="card-number">08</span>
+          <h2>Website</h2>
+          <p>
+            Die öffentliche Seite
+            ansehen.
+          </p>
+        </a>
 
       </div>
+
     </section>
 
 
-    <section>
+    <section id="neuer-text">
 
       <h2 class="section-title">
         Neuer Text
@@ -476,11 +450,13 @@ function adminPage(message = "", folders = []) {
             Ordner
 
             <select name="folder_id">
+
               <option value="">
                 Ohne Ordner
               </option>
 
               ${folderOptions}
+
             </select>
           </label>
 
@@ -526,8 +502,247 @@ function adminPage(message = "", folders = []) {
       </div>
 
     </section>
+
+
+    <section id="texte">
+
+      <h2 class="section-title">
+        Texte
+      </h2>
+
+      <div class="card dashboard-placeholder">
+        <h3>Textverwaltung</h3>
+        <p>
+          Hier kommen als Nächstes deine vorhandenen
+          Texte mit Bearbeiten, Verschieben,
+          Sichtbarkeit und Löschen hin.
+        </p>
+      </div>
+
+    </section>
+
+
+    <section id="ordner">
+
+      <h2 class="section-title">
+        Ordner
+      </h2>
+
+      <div class="card">
+
+        <form
+          method="POST"
+          class="create-folder"
+        >
+
+          <input
+            type="hidden"
+            name="action"
+            value="create_folder"
+          >
+
+          <input
+            type="text"
+            name="name"
+            placeholder="Neuer Ordner"
+            required
+          >
+
+          <button type="submit">
+            Erstellen
+          </button>
+
+        </form>
+
+
+        ${
+          folders.length
+            ? folders.map(folder => `
+              <div class="folder">
+
+                <div class="folder-name">
+                  ${esc(folder.name)}
+                </div>
+
+                <div class="folder-status">
+                  ${
+                    folder.is_private
+                      ? "Privater Ordner"
+                      : "Öffentlicher Ordner"
+                  }
+                </div>
+
+                <div class="folder-actions">
+
+                  <form method="POST">
+
+                    <input
+                      type="hidden"
+                      name="action"
+                      value="rename_folder"
+                    >
+
+                    <input
+                      type="hidden"
+                      name="id"
+                      value="${esc(folder.id)}"
+                    >
+
+                    <input
+                      type="text"
+                      name="name"
+                      placeholder="Neuer Name"
+                      required
+                    >
+
+                    <button
+                      type="submit"
+                      class="secondary"
+                    >
+                      Umbenennen
+                    </button>
+
+                  </form>
+
+
+                  <form method="POST">
+
+                    <input
+                      type="hidden"
+                      name="action"
+                      value="toggle_folder"
+                    >
+
+                    <input
+                      type="hidden"
+                      name="id"
+                      value="${esc(folder.id)}"
+                    >
+
+                    <button
+                      type="submit"
+                      class="secondary"
+                    >
+                      ${
+                        folder.is_private
+                          ? "Öffentlich stellen"
+                          : "Privat stellen"
+                      }
+                    </button>
+
+                  </form>
+
+
+                  <form method="POST">
+
+                    <input
+                      type="hidden"
+                      name="action"
+                      value="delete_folder"
+                    >
+
+                    <input
+                      type="hidden"
+                      name="id"
+                      value="${esc(folder.id)}"
+                    >
+
+                    <button
+                      type="submit"
+                      class="danger"
+                    >
+                      Löschen
+                    </button>
+
+                  </form>
+
+                </div>
+
+              </div>
+            `).join("")
+            : `
+              <p class="muted">
+                Noch keine Ordner vorhanden.
+              </p>
+            `
+        }
+
+      </div>
+
+    </section>
+
+
+    <section id="kommentare">
+
+      <h2 class="section-title">
+        Kommentare
+      </h2>
+
+      <div class="card dashboard-placeholder">
+        <h3>Kommentarverwaltung</h3>
+        <p>
+          Kommentare löschen und als Admin
+          beantworten.
+        </p>
+      </div>
+
+    </section>
+
+
+    <section id="papierkorb">
+
+      <h2 class="section-title">
+        Papierkorb
+      </h2>
+
+      <div class="card dashboard-placeholder">
+        <h3>Zuletzt gelöscht</h3>
+        <p>
+          Gelöschte Texte und Ordner werden
+          später 30 Tage lang aufbewahrt.
+        </p>
+      </div>
+
+    </section>
+
+
+    <section id="passwoerter">
+
+      <h2 class="section-title">
+        Passwörter
+      </h2>
+
+      <div class="card dashboard-placeholder">
+        <h3>Zugriffsschutz</h3>
+        <p>
+          Hier verwalten wir später den
+          gemeinsamen Halbprivat-Code und
+          individuelle Passwörter für einzelne Texte.
+        </p>
+      </div>
+
+    </section>
+
+
+    <section id="einstellungen">
+
+      <h2 class="section-title">
+        Einstellungen
+      </h2>
+
+      <div class="card dashboard-placeholder">
+        <h3>Seiteneinstellungen</h3>
+        <p>
+          NiB-Name, Künstlername, Seitentitel,
+          Fußzeile und weitere Einstellungen.
+        </p>
+      </div>
+
+    </section>
+
   `);
 }
+
 
 
 function getSession(request) {
