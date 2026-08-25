@@ -921,7 +921,7 @@ async function getTexts(env) {
         Content,
         folder,
         visibility,
-        Password,
+        password,
         updated_at,
         created_at
       FROM texts
@@ -1273,29 +1273,30 @@ return new Response(
 
 
             await env.DB.prepare(`
-  INSERT INTO texts
-  (
-    id,
-    title,
-    Content,
-    folder,
-    visibility,
-    Password,
-    created_at,
-    updated_at
+              INSERT INTO texts
+              (
+              id,
+              title,
+              content,
+              folder,
+              visibility,
+              password,
+              created_at,
+              updated_at
+          )
+          VALUES
+          (?, ?, ?, ?, ?, NULL, ?, ?)
+            )
+    .bind(
+        id,
+        title,
+        content,
+        folder,
+        visibility,
+        now,
+        now
   )
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-`)
-.bind(
-  id,
-  title,
-  content,
-  folderId,
-  visibility,
-  null,
-  now,
-  now
-)
+
 .run();
 
             const folders =
