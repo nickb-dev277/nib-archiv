@@ -1348,23 +1348,6 @@ if (action === "create_text") {
   // ───────────────────────
 
   if (!title) {
-
-    const folders =
-      await getFolders(env);
-
-    const texts =
-      await getTexts(env);
-
-    return htmlResponse(
-      adminPage(
-        "Bitte einen Titel eingeben.",
-        folders,
-        texts
-      )
-    );
-  
-
-
   if (
     ![
       "public",
@@ -1391,7 +1374,6 @@ if (action === "create_text") {
 
   const now =
     new Date().toISOString();
-
 
   // ───────────────────────
   // TEXT IN D1 SPEICHERN
@@ -1451,33 +1433,7 @@ if (action === "create_text") {
             // ───────────────────────
             // TEXT IN D1 SPEICHERN
             // ───────────────────────
-
-            await env.DB.prepare(`
-              INSERT INTO texts
-              (
-                title,
-                content,
-                folder,
-                visibility,
-                password,
-                updated_at,
-                created_at
-              )
-              VALUES (?, ?, ?, ?, ?, ?, ?,)
-            `)
-            .bind(
-              title,
-              content,
-              folder,
-              visibility,
-              null,
-              now,
-              now
-            )
-            .run();
-
-
-            const folders =
+              const folders =
               await getFolders(env);
 
             const texts =
