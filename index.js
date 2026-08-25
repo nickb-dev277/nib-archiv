@@ -363,7 +363,7 @@ if (request.method === "POST") {
               UPDATE folders
               SET deleted_at = ?, updated_at = ?
               WHERE id = ? AND deleted_at IS NULL
-            `)
+            `))
             .bind(
               new Date().toISOString(),
               new Date().toISOString(),
