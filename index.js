@@ -4464,4 +4464,24 @@ export default {
 
 // ─────────────────────────────────────
 // Response-Helfer
-//
+// ─────────────────────────────────────
+
+function htmlResponse(
+  html,
+  status = 200
+) {
+
+  return new Response(
+    html,
+    {
+      status,
+      headers: {
+        "content-type":
+          "text/html; charset=UTF-8",
+        "cache-control":
+          "no-store"
+      }
+    }
+  );
+}
+
