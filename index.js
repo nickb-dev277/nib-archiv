@@ -1,6 +1,24 @@
-// ─────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════
 // NiB – Archiv
-// ─────────────────────────────────────
+// Cloudflare Worker
+//
+// Bereiche:
+// 01. Grundfunktionen
+// 02. HTML / CSS
+// 03. Öffentliche Website
+// 04. Admin-Login
+// 05. Admin-Dashboard
+// 06. Admin-Menüs
+// 07. Datenbank-Funktionen
+// 08. Cloudinary
+// 09. Sessions / Besucher
+// 10. Worker / Routing
+// ═════════════════════════════════════════════════════════════════════
+
+
+// ─────────────────────────────────────────────────────────────────────
+// 01. GRUNDFUNKTIONEN
+// ─────────────────────────────────────────────────────────────────────
 
 function esc(value) {
   return String(value ?? "")
@@ -11,8 +29,9 @@ function esc(value) {
     .replaceAll("'", "&#039;");
 }
 
+
 function formatDate(value) {
-  if (!value) return "–";
+  if (!value) return "—";
 
   const date = new Date(value);
 
@@ -26,37 +45,136 @@ function formatDate(value) {
   }).format(date);
 }
 
-function visibilityName(value) {
-  if (value === "public") return "Öffentlich";
-  if (value === "semi_private") return "Halbprivat";
+
+function visibilityLabel(visibility) {
+  if (visibility === "public") return "Öffentlich";
+  if (visibility === "semi_private") return "Halbprivat";
   return "Privat";
 }
 
 
-// ─────────────────────────────────────
-// HTML-Grundseite
-// ─────────────────────────────────────
+function visibilityClass(visibility) {
+  if (visibility === "public") return "visibility-public";
+  if (visibility === "semi_private") return "visibility-semi";
+  return "visibility-private";
+}
+
+
+function randomId() {
+  return crypto.randomUUID();
+}
+
+
+function htmlResponse(html, status = 200, extraHeaders = {}) {
+  return new Response(html, {
+    status,
+    headers: {
+      "content-type": "text/html; charset=UTF-8",
+      ...extraHeaders
+    }
+  });
+}
+
+
+function redirect(location, extraHeaders = {}) {
+  return new Response(null, {
+    status: 303,
+    headers: {
+      Location: location,
+      ...extraHeaders
+    }
+  });
+}
+
+
+function getSession(request) {
+  const cookie = request.headers.get("Cookie") || "";
+
+  const match = cookie.match(
+    /(?:^|;\s*)nib_session=([^;]+)/
+  );
+
+  return match ? match[1] : null;
+}
+
+
+function getVisitorKey(request) {
+  const cookie = request.headers.get("Cookie") || "";
+
+  const match = cookie.match(
+    /(?:^|;\s*)nib_visitor=([^;]+)/
+  );
+
+  return match ? match[1] : null;
+}
+
+
+function visitorCookie(key) {
+  return [
+    `nib_visitor=${key}`,
+    "HttpOnly",
+    "Secure",
+    "SameSite=Lax",
+    "Path=/",
+    "Max-Age=31536000"
+  ].join("; ");
+}
+
+
+function adminCookie(session) {
+  return [
+    `nib_session=${session}`,
+    "HttpOnly",
+    "Secure",
+    "SameSite=Lax",
+    "Path=/",
+    "Max-Age=86400"
+  ].join("; ");
+}
+
+
+function clearAdminCookie() {
+  return [
+    "nib_session=",
+    "HttpOnly",
+    "Secure",
+    "SameSite=Lax",
+    "Path=/",
+    "Max-Age=0"
+  ].join("; ");
+}
+
+
+// ─────────────────────────────────────────────────────────────────────
+// 02. HTML / CSS
+// ─────────────────────────────────────────────────────────────────────
 
 function page(content, title = "NiB") {
   return `<!doctype html>
 <html lang="de">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
 
-<title>${esc(title)} – NiB</title>
+<meta charset="utf-8">
+
+<meta
+  name="viewport"
+  content="width=device-width,initial-scale=1"
+>
+
+<title>${esc(title)}</title>
 
 <style>
 
 :root {
   --bg: #f3efe8;
   --paper: #faf8f4;
+  --paper-2: #ebe5dc;
   --text: #29251f;
   --muted: #81796f;
   --line: #ddd6cc;
   --accent: #4d4943;
   --danger: #7a4f4f;
-  --success: #596c59;
+  --success: #52644e;
 }
 
 * {
@@ -85,59 +203,46 @@ main {
   padding: 45px 0 100px;
 }
 
-header {
-  margin-bottom: 45px;
+button,
+input,
+textarea,
+select {
+  font: inherit;
 }
 
-.logo {
-  margin: 0;
-  font-family: Georgia, serif;
-  font-size: 44px;
-  font-weight: 400;
-  letter-spacing: .18em;
+button {
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  padding: 10px 18px;
+  cursor: pointer;
 }
 
-.subtitle {
-  margin: 8px 0 0;
-  color: var(--muted);
-  font-size: 13px;
-  letter-spacing: .08em;
-  text-transform: uppercase;
+button:hover {
+  opacity: .82;
 }
 
-.topbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 20px;
-  margin-bottom: 55px;
+button.secondary {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--line);
 }
 
-.topbar-right {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+button.danger {
+  background: transparent;
+  color: var(--danger);
+  border-color: #c9b4b4;
 }
 
-section {
-  margin-bottom: 45px;
+button.like-button {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--line);
 }
 
-.section-title {
-  margin: 0 0 20px;
-  font-family: Georgia, serif;
-  font-size: 28px;
-  font-weight: 400;
-}
-
-.card {
-  background: var(--paper);
-  border: 1px solid var(--line);
-  padding: 28px;
-}
-
-.card + .card {
-  margin-top: 14px;
+button.like-button.liked {
+  background: var(--accent);
+  color: #fff;
 }
 
 input,
@@ -148,7 +253,6 @@ select {
   background: transparent;
   color: var(--text);
   padding: 12px 13px;
-  font: inherit;
   outline: none;
   border-radius: 0;
 }
@@ -167,8 +271,8 @@ textarea {
 label {
   display: block;
   margin-bottom: 22px;
-  font-size: 13px;
   color: var(--muted);
+  font-size: 13px;
 }
 
 label input,
@@ -177,46 +281,45 @@ label select {
   margin-top: 7px;
 }
 
-button,
-.button {
-  display: inline-block;
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: #fff;
-  padding: 10px 18px;
-  font: inherit;
-  cursor: pointer;
-  text-decoration: none;
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  margin-bottom: 55px;
 }
 
-button:hover,
-.button:hover {
-  opacity: .82;
+.logo {
+  margin: 0;
+  font-family: Georgia, serif;
+  font-size: 44px;
+  font-weight: 400;
+  letter-spacing: .18em;
 }
 
-button.secondary,
-.button.secondary {
-  background: transparent;
-  color: var(--text);
-  border-color: var(--line);
+.subtitle {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
 }
 
-button.danger,
-.button.danger {
-  background: transparent;
-  color: var(--danger);
-  border-color: #c9b4b4;
+.card {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  padding: 28px;
 }
 
-button.like-button {
-  background: transparent;
-  color: var(--text);
-  border-color: var(--line);
+.section {
+  margin-bottom: 45px;
 }
 
-button.like-button.liked {
-  background: var(--accent);
-  color: #fff;
+.section-title {
+  margin: 0 0 20px;
+  font-family: Georgia, serif;
+  font-size: 27px;
+  font-weight: 400;
 }
 
 .message {
@@ -224,14 +327,13 @@ button.like-button.liked {
   padding: 10px 15px;
   margin-bottom: 30px;
   color: var(--muted);
-  background: rgba(255,255,255,.25);
 }
 
 .message.success {
   border-color: var(--success);
 }
 
-.message.error {
+.message.danger {
   border-color: var(--danger);
 }
 
@@ -239,134 +341,226 @@ button.like-button.liked {
   color: var(--muted);
 }
 
+.small {
+  font-size: 13px;
+}
+
 .meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
   color: var(--muted);
   font-size: 13px;
 }
 
-.meta-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px 20px;
-  margin-top: 10px;
-}
-
-.search-row {
-  display: grid;
-  grid-template-columns: 1fr 220px auto;
-  gap: 10px;
-}
-
-.text-list {
-  display: grid;
-  gap: 12px;
-}
-
-.text-card {
-  display: block;
-  padding: 22px;
+.badge {
+  display: inline-block;
+  padding: 3px 8px;
   border: 1px solid var(--line);
-  background: var(--paper);
+  font-size: 12px;
+}
+
+.visibility-public {
+  color: var(--success);
+}
+
+.visibility-semi {
+  color: #776342;
+}
+
+.visibility-private {
+  color: var(--danger);
+}
+
+
+/* Öffentliche Website */
+
+.public-header {
+  position: relative;
+}
+
+.admin-link {
+  position: absolute;
+  top: 0;
+  right: 0;
   text-decoration: none;
-  transition: border-color .15s ease;
+  border: 1px solid var(--line);
+  padding: 8px 13px;
+  font-size: 13px;
+  background: var(--paper);
 }
 
-.text-card:hover {
-  border-color: var(--accent);
+.public-intro {
+  margin-bottom: 35px;
 }
 
-.text-title {
+.public-tools {
+  display: grid;
+  grid-template-columns: 1fr 220px;
+  gap: 10px;
+  margin-bottom: 35px;
+}
+
+.public-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.public-item {
+  display: block;
+  padding: 24px 0;
+  border-top: 1px solid var(--line);
+  text-decoration: none;
+}
+
+.public-item:first-child {
+  border-top: 0;
+}
+
+.public-item h2 {
   margin: 0 0 8px;
   font-family: Georgia, serif;
-  font-size: 23px;
+  font-size: 25px;
   font-weight: 400;
 }
 
-.text-preview {
+.public-item:hover h2 {
+  text-decoration: underline;
+}
+
+.public-item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
   color: var(--muted);
-  font-size: 14px;
+  font-size: 13px;
+}
+
+
+/* Öffentlicher Text */
+
+.text-header {
+  margin-bottom: 35px;
+}
+
+.back-link {
+  display: inline-block;
+  margin-bottom: 25px;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+.text-title {
+  margin: 0 0 12px;
+  font-family: Georgia, serif;
+  font-size: clamp(32px, 6vw, 54px);
+  font-weight: 400;
+  line-height: 1.15;
 }
 
 .text-content {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   word-break: break-word;
-  font-size: 16px;
+  font-size: 17px;
+  line-height: 1.85;
 }
 
-.text-header {
-  margin-bottom: 28px;
-}
-
-.text-header h1 {
-  margin: 0;
-  font-family: Georgia, serif;
-  font-size: 38px;
-  font-weight: 400;
-}
-
-.like-comments {
+.image-gallery {
+  display: grid;
+  gap: 16px;
   margin-top: 35px;
-  padding-top: 25px;
-  border-top: 1px solid var(--line);
 }
 
-.like-row {
+.image-gallery img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 800px;
+  object-fit: contain;
+  background: var(--bg);
+  border: 1px solid var(--line);
+}
+
+.interaction-bar {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 30px;
+  flex-wrap: wrap;
+  padding: 20px 0;
+  margin-top: 35px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
 }
 
+.interaction-count {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+
+/* Kommentare */
+
 .comments {
-  display: grid;
-  gap: 12px;
+  margin-top: 45px;
 }
 
 .comment {
-  padding: 16px;
-  border: 1px solid var(--line);
-  background: var(--paper);
+  padding: 20px 0;
+  border-top: 1px solid var(--line);
 }
 
-.comment-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 15px;
-  margin-bottom: 7px;
+.comment:first-child {
+  border-top: 0;
 }
 
 .comment-author {
   font-weight: bold;
+  font-size: 14px;
 }
 
 .comment-date {
   color: var(--muted);
   font-size: 12px;
+  margin-left: 8px;
 }
 
-.comment-body {
+.comment-text {
+  margin-top: 8px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
 .comment-form {
-  margin-top: 25px;
+  margin-top: 30px;
 }
 
-.image-gallery {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  margin-bottom: 30px;
+.comment-form textarea {
+  min-height: 130px;
 }
 
-.image-gallery img {
-  width: 100%;
-  display: block;
-  max-height: 500px;
-  object-fit: contain;
-  background: #eee9e1;
+
+/* Login */
+
+.login {
+  max-width: 420px;
+  margin: 80px auto;
+}
+
+
+/* Admin */
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 20px;
+  margin-bottom: 40px;
 }
 
 .dashboard-grid {
@@ -377,7 +571,7 @@ button.like-button.liked {
 
 .dashboard-card {
   display: block;
-  min-height: 165px;
+  min-height: 155px;
   padding: 25px;
   background: var(--paper);
   border: 1px solid var(--line);
@@ -386,16 +580,16 @@ button.like-button.liked {
 }
 
 .dashboard-card:hover {
-  border-color: var(--accent);
+  background: var(--paper-2);
 }
 
 .dashboard-card.featured {
-  background: #ebe5dc;
+  background: var(--paper-2);
 }
 
 .card-number {
   display: block;
-  margin-bottom: 25px;
+  margin-bottom: 22px;
   color: var(--muted);
   font-size: 12px;
   letter-spacing: .12em;
@@ -414,23 +608,43 @@ button.like-button.liked {
   font-size: 14px;
 }
 
-.admin-list {
-  display: grid;
-  gap: 0;
+.admin-menu {
+  margin-top: 45px;
 }
 
-.admin-item {
+.menu-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 25px;
+}
+
+.menu-nav a {
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  text-decoration: none;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.menu-nav a:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.admin-list-item {
   padding: 22px 0;
   border-top: 1px solid var(--line);
 }
 
-.admin-item:first-child {
+.admin-list-item:first-child {
   border-top: 0;
 }
 
-.admin-item-title {
+.admin-list-title {
   font-family: Georgia, serif;
   font-size: 20px;
+  margin-bottom: 5px;
 }
 
 .admin-actions {
@@ -441,760 +655,268 @@ button.like-button.liked {
 }
 
 .admin-actions form {
-  display: inline-flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.login {
-  max-width: 420px;
-  margin: 90px auto;
-}
-
-.form-actions {
   display: flex;
-  flex-wrap: wrap;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
-.back {
-  display: inline-block;
-  margin-bottom: 25px;
-  color: var(--muted);
-  text-decoration: none;
+.admin-actions input {
+  width: 200px;
+  padding: 9px 10px;
 }
 
-.back:hover {
-  color: var(--text);
-}
-
-.notification {
-  display: inline-flex;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 6px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 99px;
-  background: var(--accent);
-  color: #fff;
-  font-size: 11px;
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
 }
 
 .password-box {
-  padding: 16px;
-  background: #eee9e1;
+  margin-top: 20px;
+  padding: 15px;
   border: 1px solid var(--line);
-  margin-bottom: 25px;
+  background: var(--bg);
+  overflow-wrap: anywhere;
+}
+
+.password-value {
+  font-family: monospace;
+  word-break: break-all;
+}
+
+.notification {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 7px;
+  background: var(--accent);
+  color: white;
+  font-size: 11px;
+}
+
+.image-admin {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 15px;
+}
+
+.image-admin figure {
+  margin: 0;
+  border: 1px solid var(--line);
+  padding: 8px;
+}
+
+.image-admin img {
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
 }
 
 .empty {
-  padding: 30px 0;
+  padding: 25px 0;
   color: var(--muted);
 }
+
+
+/* Responsive */
 
 @media (max-width: 700px) {
 
   main {
     width: min(100% - 28px, 1000px);
-    padding-top: 30px;
+    padding-top: 35px;
   }
 
   .logo {
     font-size: 36px;
   }
 
-  .topbar {
-    flex-direction: column;
-  }
-
-  .card {
-    padding: 20px;
+  .header,
+  .dashboard-header {
+    align-items: flex-start;
   }
 
   .dashboard-grid {
     grid-template-columns: 1fr;
   }
 
-  .search-row {
+  .public-tools,
+  .form-row {
     grid-template-columns: 1fr;
   }
 
-  .image-gallery {
+  .card {
+    padding: 20px;
+  }
+
+  .admin-link {
+    position: static;
+    display: inline-block;
+    margin-bottom: 25px;
+  }
+
+  .image-admin {
     grid-template-columns: 1fr;
   }
 
-  .text-header h1 {
-    font-size: 31px;
-  }
 }
 
 </style>
+
 </head>
 
 <body>
+
 <main>
+
 ${content}
+
 </main>
+
 </body>
+
 </html>`;
 }
 
 
-// ─────────────────────────────────────
-// Session
-// ─────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────
+// 03. ÖFFENTLICHE WEBSITE
+// ─────────────────────────────────────────────────────────────────────
 
-function getSession(request) {
-  const cookie = request.headers.get("Cookie") || "";
+function publicHomePage(texts, folders, search = "", folderFilter = "") {
 
-  const match = cookie.match(
-    /(?:^|;\\s*)nib_session=([^;]+)/
+  const publicFolders = folders.filter(
+    folder => !Number(folder.is_private)
   );
 
-  return match ? match[1] : null;
-}
+  const normalizedSearch = search.trim().toLowerCase();
+
+  const filteredTexts = texts.filter(text => {
+
+    const isVisible =
+      text.visibility === "public" ||
+      text.visibility === "semi_private";
+
+    if (!isVisible) {
+      return false;
+    }
+
+    const folder =
+      publicFolders.find(
+        item => item.id === text.folder
+      );
+
+    if (text.folder && folder === undefined) {
+      return false;
+    }
+
+    if (
+      folderFilter &&
+      String(text.folder) !== String(folderFilter)
+    ) {
+      return false;
+    }
+
+    if (
+      normalizedSearch &&
+      !String(text.title)
+        .toLowerCase()
+        .includes(normalizedSearch)
+    ) {
+      return false;
+    }
+
+    return true;
+  });
 
-async function isAdmin(request, env) {
-  const session = getSession(request);
-
-  if (!session) {
-    return false;
-  }
-
-  return (await env.SESSIONS.get(session)) === "admin";
-}
-
-
-// ─────────────────────────────────────
-// Besucher-ID für Likes
-// ─────────────────────────────────────
-
-function getVisitorKey(request) {
-  const cookie = request.headers.get("Cookie") || "";
-
-  const match = cookie.match(
-    /(?:^|;\\s*)nib_visitor=([^;]+)/
-  );
-
-  return match ? match[1] : null;
-}
-
-function visitorCookie(key) {
-  return `nib_visitor=${key}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=31536000`;
-}
-
-
-// ─────────────────────────────────────
-// Datenbank – Ordner
-// ─────────────────────────────────────
-
-async function getFolders(env) {
-  const result = await env.DB.prepare(`
-    SELECT
-      id,
-      name,
-      is_private,
-      created_at,
-      updated_at
-    FROM folders
-    WHERE deleted_at IS NULL
-    ORDER BY name COLLATE NOCASE
-  `).all();
-
-  return result.results || [];
-}
-
-
-// ─────────────────────────────────────
-// Datenbank – Texte
-// ─────────────────────────────────────
-
-async function getTexts(env, options = {}) {
-
-  let sql = `
-    SELECT
-      id,
-      title,
-      content,
-      folder,
-      visibility,
-      password,
-      updated_at,
-      created_at
-    FROM texts
-    WHERE deleted_at IS NULL
-  `;
-
-  const values = [];
-
-  if (options.publicOnly) {
-    sql += `
-      AND visibility IN ('public', 'semi_private')
-    `;
-  }
-
-  if (options.search) {
-    sql += `
-      AND title LIKE ?
-    `;
-
-    values.push(`%${options.search}%`);
-  }
-
-  if (options.folder) {
-    sql += `
-      AND folder = ?
-    `;
-
-    values.push(options.folder);
-  }
-
-  sql += `
-    ORDER BY updated_at DESC
-  `;
-
-  const result =
-    await env.DB.prepare(sql)
-      .bind(...values)
-      .all();
-
-  return result.results || [];
-}
-
-async function getText(env, id) {
-
-  return await env.DB.prepare(`
-    SELECT
-      id,
-      title,
-      content,
-      folder,
-      visibility,
-      password,
-      created_at,
-      updated_at
-    FROM texts
-    WHERE
-      id = ?
-      AND deleted_at IS NULL
-  `)
-  .bind(id)
-  .first();
-}
-
-
-// ─────────────────────────────────────
-// Datenbank – Kommentare
-// ─────────────────────────────────────
-
-async function getComments(env, textId) {
-
-  const result =
-    await env.DB.prepare(`
-      SELECT
-        id,
-        text_id,
-        comment,
-        author_name,
-        created_at
-      FROM comments
-      WHERE text_id = ?
-      ORDER BY created_at ASC, id ASC
-    `)
-    .bind(textId)
-    .all();
-
-  return result.results || [];
-}
-
-async function getAllComments(env) {
-
-  const result =
-    await env.DB.prepare(`
-      SELECT
-        comments.id,
-        comments.text_id,
-        comments.comment,
-        comments.author_name,
-        comments.created_at,
-        texts.title
-      FROM comments
-      LEFT JOIN texts
-        ON texts.id = comments.text_id
-      ORDER BY comments.created_at DESC
-    `)
-    .all();
-
-  return result.results || [];
-}
-
-
-// ─────────────────────────────────────
-// Datenbank – Bilder
-// ─────────────────────────────────────
-
-async function getImages(env, textId) {
-
-  const result =
-    await env.DB.prepare(`
-      SELECT
-        id,
-        text_id,
-        r2_key,
-        filename,
-        created_at
-      FROM text_images
-      WHERE text_id = ?
-      ORDER BY created_at ASC
-    `)
-    .bind(textId)
-    .all();
-
-  return result.results || [];
-}
-
-
-// ─────────────────────────────────────
-// Datenbank – Likes
-// ─────────────────────────────────────
-
-async function getLikeCount(env, textId) {
-
-  const result =
-    await env.DB.prepare(`
-      SELECT COUNT(*) AS count
-      FROM text_likes
-      WHERE text_id = ?
-    `)
-    .bind(textId)
-    .first();
-
-  return Number(result?.count || 0);
-}
-
-async function hasLiked(env, textId, visitorKey) {
-
-  if (!visitorKey) {
-    return false;
-  }
-
-  const result =
-    await env.DB.prepare(`
-      SELECT id
-      FROM text_likes
-      WHERE
-        text_id = ?
-        AND visitor_key = ?
-      LIMIT 1
-    `)
-    .bind(textId, visitorKey)
-    .first();
-
-  return Boolean(result);
-}
-
-
-// ─────────────────────────────────────
-// Datenbank – Benachrichtigungen
-// ─────────────────────────────────────
-
-async function getUnreadCommentCount(env) {
-
-  try {
-
-    const result =
-      await env.DB.prepare(`
-        SELECT value
-        FROM settings
-        WHERE key = 'unread_comment_count'
-      `)
-      .first();
-
-    return Number(result?.value || 0);
-
-  } catch {
-
-    return 0;
-  }
-}
-
-async function increaseUnreadComments(env) {
-
-  await env.DB.prepare(`
-    INSERT INTO settings (key, value)
-    VALUES ('unread_comment_count', '1')
-    ON CONFLICT(key)
-    DO UPDATE SET value =
-      CAST(CAST(settings.value AS INTEGER) + 1 AS TEXT)
-  `)
-  .run();
-}
-
-async function clearUnreadComments(env) {
-
-  await env.DB.prepare(`
-    INSERT INTO settings (key, value)
-    VALUES ('unread_comment_count', '0')
-    ON CONFLICT(key)
-    DO UPDATE SET value = '0'
-  `)
-  .run();
-}
-
-
-// ─────────────────────────────────────
-// Cloudinary – Signatur
-// ─────────────────────────────────────
-
-async function sha1(value) {
-
-  const data =
-    new TextEncoder().encode(value);
-
-  const hash =
-    await crypto.subtle.digest(
-      "SHA-1",
-      data
-    );
-
-  return Array
-    .from(new Uint8Array(hash))
-    .map(
-      byte =>
-        byte
-          .toString(16)
-          .padStart(2, "0")
-    )
-    .join("");
-}
-
-async function cloudinaryUpload(file, env) {
-
-  if (!file || file.size === 0) {
-    throw new Error("Keine Datei.");
-  }
-
-  if (!file.type.startsWith("image/")) {
-    throw new Error("Nur Bilder sind erlaubt.");
-  }
-
-  const timestamp =
-    Math.floor(Date.now() / 1000);
-
-  const signatureBase =
-    `timestamp=${timestamp}${env.CLOUDINARY_API_SECRET}`;
-
-  const signature =
-    await sha1(signatureBase);
-
-  const body =
-    new FormData();
-
-  body.append("file", file);
-  body.append("api_key", env.CLOUDINARY_API_KEY);
-  body.append("timestamp", String(timestamp));
-  body.append("signature", signature);
-
-  const response =
-    await fetch(
-      `https://api.cloudinary.com/v1_1/${encodeURIComponent(
-        env.CLOUDINARY_CLOUD_NAME
-      )}/image/upload`,
-      {
-        method: "POST",
-        body
-      }
-    );
-
-  if (!response.ok) {
-
-    const errorText =
-      await response.text();
-
-    throw new Error(
-      `Cloudinary-Upload fehlgeschlagen: ${errorText}`
-    );
-  }
-
-  return await response.json();
-}
-
-
-// ─────────────────────────────────────
-// Öffentliche Startseite
-// ─────────────────────────────────────
-
-async function publicHomePage(
-  env,
-  request,
-  message = ""
-) {
-
-  const url =
-    new URL(request.url);
-
-  const search =
-    url.searchParams.get("q") || "";
-
-  const folder =
-    url.searchParams.get("folder") || "";
-
-  const folders =
-    await getFolders(env);
-
-  const texts =
-    await getTexts(
-      env,
-      {
-        publicOnly: true,
-        search,
-        folder
-      }
-    );
 
   return page(`
 
-    <header class="topbar">
+    <header class="public-header">
 
-      <div>
-        <p class="subtitle">
-          Öffentliches Archiv
+      <a
+        class="admin-link"
+        href="/admin"
+      >
+        Admin-Anmeldung
+      </a>
+
+      <p class="subtitle">
+        NiB Archiv
+      </p>
+
+      <h1 class="logo">
+        NiB
+      </h1>
+
+      <div class="public-intro">
+
+        <p class="muted">
+          Texte, Notizen und Fragmente.
         </p>
-
-        <h1 class="logo">
-          NiB
-        </h1>
-      </div>
-
-      <div class="topbar-right">
-
-        <a
-          class="button secondary"
-          href="/admin"
-        >
-          Admin
-        </a>
 
       </div>
 
     </header>
 
-    ${
-      message
-        ? `<p class="message">${esc(message)}</p>`
-        : ""
-    }
 
-    <section>
+    <section class="section">
 
-      <h2 class="section-title">
-        Archiv
-      </h2>
+      <div class="public-tools">
 
-      <div class="card">
-
-        <form
-          method="GET"
-          class="search-row"
-        >
+        <form method="GET">
 
           <input
-            type="search"
+            type="text"
             name="q"
             value="${esc(search)}"
-            placeholder="Nach Überschrift suchen..."
+            placeholder="Text in Überschrift suchen..."
           >
 
-          <select name="folder">
+        </form>
+
+
+        <form method="GET">
+
+          ${
+            search
+              ? `
+                <input
+                  type="hidden"
+                  name="q"
+                  value="${esc(search)}"
+                >
+              `
+              : ""
+          }
+
+          <select
+            name="folder"
+            onchange="this.form.submit()"
+          >
 
             <option value="">
               Alle Ordner
             </option>
 
-            ${folders
-              .filter(folder => !folder.is_private)
-              .map(folder => `
+            ${
+              publicFolders.map(folder => `
                 <option
-                  value="${esc(folder.name)}"
+                  value="${esc(folder.id)}"
                   ${
-                    folder.name === folder
+                    String(folderFilter) === String(folder.id)
                       ? "selected"
                       : ""
                   }
                 >
                   ${esc(folder.name)}
                 </option>
-              `)
-              .join("")}
+              `).join("")
+            }
 
           </select>
 
-          <button type="submit">
-            Suchen
-          </button>
-
         </form>
-
-      </div>
-
-    </section>
-
-
-    <section>
-
-      ${
-        texts.length
-          ? `
-
-            <div class="text-list">
-
-              ${texts.map(text => `
-
-                <a
-                  class="text-card"
-                  href="/text/${encodeURIComponent(text.id)}"
-                >
-
-                  <h2 class="text-title">
-                    ${esc(text.title)}
-                  </h2>
-
-                  <div class="text-preview">
-                    ${esc(
-                      String(text.content)
-                        .replace(/\s+/g, " ")
-                        .slice(0, 180)
-                    )}${
-                      String(text.content).length > 180
-                        ? "…"
-                        : ""
-                    }
-                  </div>
-
-                  <div class="meta-row">
-
-                    <span class="meta">
-                      Ordner:
-                      ${esc(text.folder)}
-                    </span>
-
-                    <span class="meta">
-                      Erstellt:
-                      ${esc(formatDate(text.created_at))}
-                    </span>
-
-                    <span class="meta">
-                      Zuletzt bearbeitet:
-                      ${esc(formatDate(text.updated_at))}
-                    </span>
-
-                  </div>
-
-                </a>
-
-              `).join("")}
-
-            </div>
-
-          `
-          : `
-            <div class="card empty">
-              Keine öffentlichen Texte gefunden.
-            </div>
-          `
-      }
-
-    </section>
-
-  `, "Archiv");
-}
-
-
-// ─────────────────────────────────────
-// Einzelner öffentlicher Text
-// ─────────────────────────────────────
-
-async function publicTextPage(
-  env,
-  request,
-  text,
-  message = ""
-) {
-
-  if (!text) {
-    return page(`
-      <a class="back" href="/">
-        ← Zurück zum Archiv
-      </a>
-
-      <div class="card">
-        Text nicht gefunden.
-      </div>
-    `, "Nicht gefunden");
-  }
-
-  const visitorKey =
-    getVisitorKey(request);
-
-  const comments =
-    await getComments(env, text.id);
-
-  const images =
-    await getImages(env, text.id);
-
-  const likeCount =
-    await getLikeCount(env, text.id);
-
-  const liked =
-    await hasLiked(
-      env,
-      text.id,
-      visitorKey
-    );
-
-  return page(`
-
-    <a
-      class="back"
-      href="/"
-    >
-      ← Zurück zum Archiv
-    </a>
-
-    ${
-      message
-        ? `<p class="message">${esc(message)}</p>`
-        : ""
-    }
-
-    <section>
-
-      <div class="text-header">
-
-        <div class="meta">
-          ${esc(text.folder)}
-          ·
-          ${esc(visibilityName(text.visibility))}
-        </div>
-
-        <h1>
-          ${esc(text.title)}
-        </h1>
-
-        <div class="meta-row">
-
-          <span class="meta">
-            Erstellt:
-            ${esc(formatDate(text.created_at))}
-          </span>
-
-          <span class="meta">
-            Zuletzt bearbeitet:
-            ${esc(formatDate(text.updated_at))}
-          </span>
-
-        </div>
 
       </div>
 
@@ -1202,159 +924,377 @@ async function publicTextPage(
       <div class="card">
 
         ${
-          images.length
+          filteredTexts.length
+
             ? `
-              <div class="image-gallery">
+              <div class="public-list">
 
-                ${images.map(image => `
+                ${
+                  filteredTexts.map(text => {
 
-                  <img
-                    src="${esc(image.r2_key)}"
-                    alt="${esc(image.filename || "Bild")}"
-                    loading="lazy"
-                  >
+                    const folder =
+                      publicFolders.find(
+                        item =>
+                          String(item.id) === String(text.folder)
+                      );
 
-                `).join("")}
+                    return `
+
+                      <a
+                        class="public-item"
+                        href="/text/${encodeURIComponent(text.id)}"
+                      >
+
+                        <h2>
+                          ${esc(text.title)}
+                        </h2>
+
+                        <div class="public-item-meta">
+
+                          <span>
+                            Ordner:
+                            ${esc(folder?.name || text.folder || "Ohne Ordner")}
+                          </span>
+
+                          <span>
+                            Erstellt:
+                            ${esc(formatDate(text.created_at))}
+                          </span>
+
+                          <span>
+                            Zuletzt bearbeitet:
+                            ${esc(formatDate(text.updated_at))}
+                          </span>
+
+                          ${
+                            text.visibility === "semi_private"
+                              ? `
+                                <span class="visibility-semi">
+                                  Halbprivat
+                                </span>
+                              `
+                              : ""
+                          }
+
+                        </div>
+
+                      </a>
+
+                    `;
+                  }).join("")
+                }
 
               </div>
             `
-            : ""
+
+            : `
+              <div class="empty">
+                Keine passenden Texte gefunden.
+              </div>
+            `
+        }
+
+      </div>
+
+    </section>
+
+  `, "NiB Archiv");
+}
+
+
+function publicPasswordPage(text, message = "") {
+
+  return page(`
+
+    <a
+      class="back-link"
+      href="/"
+    >
+      ← Zur Übersicht
+    </a>
+
+
+    <header class="text-header">
+
+      <p class="subtitle">
+        Halbprivater Text
+      </p>
+
+      <h1 class="text-title">
+        ${esc(text.title)}
+      </h1>
+
+    </header>
+
+
+    ${
+      message
+        ? `<p class="message">${esc(message)}</p>`
+        : ""
+    }
+
+
+    <section class="card">
+
+      <form method="POST">
+
+        <input
+          type="hidden"
+          name="action"
+          value="unlock_text"
+        >
+
+        <input
+          type="hidden"
+          name="id"
+          value="${esc(text.id)}"
+        >
+
+        <label>
+
+          Passwort
+
+          <input
+            type="password"
+            name="password"
+            autocomplete="off"
+            required
+          >
+
+        </label>
+
+        <button type="submit">
+          Text öffnen
+        </button>
+
+      </form>
+
+    </section>
+
+  `, text.title);
+}
+
+
+function publicTextPage(
+  text,
+  folder,
+  images,
+  comments,
+  likes,
+  liked,
+  visitorKey
+) {
+
+  return page(`
+
+    <a
+      class="back-link"
+      href="/"
+    >
+      ← Zur Übersicht
+    </a>
+
+
+    <header class="text-header">
+
+      <p class="subtitle">
+        ${esc(folder?.name || text.folder || "Ohne Ordner")}
+      </p>
+
+      <h1 class="text-title">
+        ${esc(text.title)}
+      </h1>
+
+      <div class="meta">
+
+        <span>
+          Erstellt:
+          ${esc(formatDate(text.created_at))}
+        </span>
+
+        <span>
+          Zuletzt bearbeitet:
+          ${esc(formatDate(text.updated_at))}
+        </span>
+
+      </div>
+
+    </header>
+
+
+    <article class="card">
+
+      <div class="text-content">
+        ${esc(text.content)}
+      </div>
+
+
+      ${
+        images.length
+
+          ? `
+            <div class="image-gallery">
+
+              ${
+                images.map(image => `
+                  <img
+                    src="${esc(image.url)}"
+                    alt="${esc(image.filename || text.title)}"
+                    loading="lazy"
+                  >
+                `).join("")
+              }
+
+            </div>
+          `
+
+          : ""
+      }
+
+
+      <div class="interaction-bar">
+
+        <form method="POST">
+
+          <input
+            type="hidden"
+            name="action"
+            value="like"
+          >
+
+          <input
+            type="hidden"
+            name="id"
+            value="${esc(text.id)}"
+          >
+
+          <button
+            type="submit"
+            class="like-button ${liked ? "liked" : ""}"
+          >
+            ${liked ? "♥ Gefällt mir" : "♡ Gefällt mir"}
+          </button>
+
+        </form>
+
+
+        <span class="interaction-count">
+          ${likes} Like${likes === 1 ? "" : "s"}
+        </span>
+
+
+        <span class="interaction-count">
+          ${comments.length}
+          Kommentar${comments.length === 1 ? "" : "e"}
+        </span>
+
+      </div>
+
+    </article>
+
+
+    <!-- Kommentare -->
+
+    <section class="comments">
+
+      <h2 class="section-title">
+        Kommentare
+      </h2>
+
+
+      <div class="card">
+
+        ${
+          comments.length
+
+            ? comments.map(comment => `
+
+              <div class="comment">
+
+                <div>
+
+                  <span class="comment-author">
+                    ${
+                      comment.author_name
+                        ? esc(comment.author_name)
+                        : "Anonym"
+                    }
+                  </span>
+
+                  <span class="comment-date">
+                    ${esc(formatDate(comment.created_at))}
+                  </span>
+
+                </div>
+
+
+                <div class="comment-text">
+                  ${esc(comment.comment)}
+                </div>
+
+              </div>
+
+            `).join("")
+
+            : `
+              <p class="muted">
+                Noch keine Kommentare.
+              </p>
+            `
         }
 
 
-        <div class="text-content">
-          ${esc(text.content)}
-        </div>
+        <div class="comment-form">
 
+          <h3>
+            Kommentar schreiben
+          </h3>
 
-        <div class="like-comments">
-
-          <div class="like-row">
-
-            <form method="POST">
-
-              <input
-                type="hidden"
-                name="action"
-                value="like"
-              >
-
-              <input
-                type="hidden"
-                name="text_id"
-                value="${esc(text.id)}"
-              >
-
-              <button
-                class="like-button ${
-                  liked ? "liked" : ""
-                }"
-                type="submit"
-              >
-                ${liked ? "♥" : "♡"}
-                ${likeCount}
-              </button>
-
-            </form>
-
-            <span class="muted">
-              ${comments.length}
-              ${
-                comments.length === 1
-                  ? "Kommentar"
-                  : "Kommentare"
-              }
-            </span>
-
-          </div>
-
-
-          <h2 class="section-title">
-            Kommentare
-          </h2>
-
-
-          <div class="comments">
-
-            ${
-              comments.length
-                ? comments.map(comment => `
-
-                    <div class="comment">
-
-                      <div class="comment-head">
-
-                        <span class="comment-author">
-                          ${esc(
-                            comment.author_name?.trim()
-                              ? comment.author_name
-                              : "Anonym"
-                          )}
-                        </span>
-
-                        <span class="comment-date">
-                          ${esc(
-                            formatDate(comment.created_at)
-                          )}
-                        </span>
-
-                      </div>
-
-                      <div class="comment-body">
-                        ${esc(comment.comment)}
-                      </div>
-
-                    </div>
-
-                  `).join("")
-                : `
-                  <p class="muted">
-                    Noch keine Kommentare.
-                  </p>
-                `
-            }
-
-          </div>
-
-
-          <form
-            method="POST"
-            class="comment-form"
-          >
+          <form method="POST">
 
             <input
               type="hidden"
               name="action"
-              value="comment"
+              value="create_comment"
             >
 
             <input
               type="hidden"
-              name="text_id"
+              name="id"
               value="${esc(text.id)}"
             >
 
+
             <label>
-              Name (optional)
+
+              Name
+              <span class="small">
+                (optional)
+              </span>
 
               <input
                 type="text"
                 name="author_name"
                 maxlength="100"
-                placeholder="Dein Name"
+                placeholder="Anonym"
               >
+
             </label>
 
+
             <label>
+
               Kommentar
 
               <textarea
                 name="comment"
-                minlength="1"
+                maxlength="10000"
+                placeholder="Dein Kommentar..."
                 required
-                placeholder="Kommentar schreiben..."
               ></textarea>
+
             </label>
+
 
             <button type="submit">
               Kommentar veröffentlichen
@@ -1372,22 +1312,23 @@ async function publicTextPage(
 }
 
 
-// ─────────────────────────────────────
-// Admin – Login
-// ─────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────
+// 04. ADMIN-LOGIN
+// ─────────────────────────────────────────────────────────────────────
 
-function adminLoginPage(message = "") {
+function loginPage(message = "") {
 
   return page(`
 
     <div class="login">
 
       <a
-        class="back"
+        class="back-link"
         href="/"
       >
-        ← Öffentliche Website
+        ← Zur Website
       </a>
+
 
       <header>
 
@@ -1401,13 +1342,8 @@ function adminLoginPage(message = "") {
 
       </header>
 
-      <section class="card">
 
-        ${
-          message
-            ? `<p class="message error">${esc(message)}</p>`
-            : ""
-        }
+      <section class="card">
 
         <form method="POST">
 
@@ -1417,7 +1353,9 @@ function adminLoginPage(message = "") {
             value="login"
           >
 
+
           <label>
+
             Admin-Passwort
 
             <input
@@ -1426,13 +1364,26 @@ function adminLoginPage(message = "") {
               autocomplete="current-password"
               required
             >
+
           </label>
+
 
           <button type="submit">
             Anmelden
           </button>
 
         </form>
+
+
+        ${
+          message
+            ? `
+              <p class="message danger">
+                ${esc(message)}
+              </p>
+            `
+            : ""
+        }
 
       </section>
 
@@ -1442,23 +1393,21 @@ function adminLoginPage(message = "") {
 }
 
 
-// ─────────────────────────────────────
-// Admin – Dashboard
-// ─────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────
+// 05. ADMIN-DASHBOARD
+// ─────────────────────────────────────────────────────────────────────
 
-async function adminDashboardPage(
-  env,
-  message = ""
+function adminDashboardPage(
+  message = "",
+  commentCount = 0
 ) {
-
-  const unread =
-    await getUnreadCommentCount(env);
 
   return page(`
 
-    <header class="topbar">
+    <header class="dashboard-header">
 
       <div>
+
         <p class="subtitle">
           Admin-Bereich
         </p>
@@ -1466,43 +1415,33 @@ async function adminDashboardPage(
         <h1 class="logo">
           NiB
         </h1>
+
       </div>
 
-      <div class="topbar-right">
 
-        <a
-          class="button secondary"
-          href="/"
-          target="_blank"
+      <form method="POST">
+
+        <input
+          type="hidden"
+          name="action"
+          value="logout"
         >
-          Website
-        </a>
 
-        <form method="POST">
+        <button
+          type="submit"
+          class="secondary"
+        >
+          Abmelden
+        </button>
 
-          <input
-            type="hidden"
-            name="action"
-            value="logout"
-          >
-
-          <button
-            type="submit"
-            class="secondary"
-          >
-            Abmelden
-          </button>
-
-        </form>
-
-      </div>
+      </form>
 
     </header>
 
 
     ${
       message
-        ? `<p class="message">${esc(message)}</p>`
+        ? `<p class="message success">${esc(message)}</p>`
         : ""
     }
 
@@ -1511,18 +1450,25 @@ async function adminDashboardPage(
 
       <div class="dashboard-grid">
 
+
         <a
           class="dashboard-card"
           href="/admin/texts"
         >
-          <span class="card-number">01</span>
 
-          <h2>Texte</h2>
+          <span class="card-number">
+            01
+          </span>
+
+          <h2>
+            Texte
+          </h2>
 
           <p>
-            Texte ansehen, öffnen,
-            bearbeiten und löschen.
+            Vorhandene Texte ansehen,
+            öffnen und bearbeiten.
           </p>
+
         </a>
 
 
@@ -1530,13 +1476,19 @@ async function adminDashboardPage(
           class="dashboard-card featured"
           href="/admin/text/new"
         >
-          <span class="card-number">02</span>
 
-          <h2>Neuer Text</h2>
+          <span class="card-number">
+            02
+          </span>
+
+          <h2>
+            Neuer Text
+          </h2>
 
           <p>
             Einen neuen Text erstellen.
           </p>
+
         </a>
 
 
@@ -1544,13 +1496,19 @@ async function adminDashboardPage(
           class="dashboard-card"
           href="/admin/folders"
         >
-          <span class="card-number">03</span>
 
-          <h2>Ordner</h2>
+          <span class="card-number">
+            03
+          </span>
+
+          <h2>
+            Ordner
+          </h2>
 
           <p>
             Ordner erstellen und verwalten.
           </p>
+
         </a>
 
 
@@ -1558,13 +1516,16 @@ async function adminDashboardPage(
           class="dashboard-card"
           href="/admin/comments"
         >
-          <span class="card-number">04</span>
+
+          <span class="card-number">
+            04
+          </span>
 
           <h2>
             Kommentare
             ${
-              unread > 0
-                ? `<span class="notification">${unread}</span>`
+              commentCount
+                ? `<span class="notification">${commentCount} neu</span>`
                 : ""
             }
           </h2>
@@ -1572,6 +1533,7 @@ async function adminDashboardPage(
           <p>
             Kommentare ansehen und löschen.
           </p>
+
         </a>
 
 
@@ -1579,13 +1541,40 @@ async function adminDashboardPage(
           class="dashboard-card"
           href="/admin/trash"
         >
-          <span class="card-number">05</span>
 
-          <h2>Papierkorb</h2>
+          <span class="card-number">
+            05
+          </span>
+
+          <h2>
+            Papierkorb
+          </h2>
 
           <p>
             Gelöschte Inhalte verwalten.
           </p>
+
+        </a>
+
+
+        <a
+          class="dashboard-card"
+          href="/admin/passwords"
+        >
+
+          <span class="card-number">
+            06
+          </span>
+
+          <h2>
+            Passwörter
+          </h2>
+
+          <p>
+            Halbprivates Passwort und
+            Textpasswörter.
+          </p>
+
         </a>
 
 
@@ -1593,13 +1582,19 @@ async function adminDashboardPage(
           class="dashboard-card"
           href="/admin/settings"
         >
-          <span class="card-number">06</span>
 
-          <h2>Passwörter & Einstellungen</h2>
+          <span class="card-number">
+            07
+          </span>
+
+          <h2>
+            Einstellungen
+          </h2>
 
           <p>
-            Zugriffsschutz und NiB-Einstellungen.
+            Weitere NiB-Einstellungen.
           </p>
+
         </a>
 
 
@@ -1607,232 +1602,319 @@ async function adminDashboardPage(
           class="dashboard-card"
           href="/"
           target="_blank"
+          rel="noopener"
         >
-          <span class="card-number">07</span>
 
-          <h2>Website</h2>
+          <span class="card-number">
+            08
+          </span>
+
+          <h2>
+            Website
+          </h2>
 
           <p>
             Öffentliche Website öffnen.
           </p>
+
         </a>
 
       </div>
 
     </section>
 
-  `, "Dashboard");
+  `, "NiB Admin");
 }
 
 
-// ─────────────────────────────────────
-// Admin – Texte
-// ─────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────
+// 06. ADMIN-MENÜS
+// ─────────────────────────────────────────────────────────────────────
 
-async function adminTextsPage(
-  env,
-  message = ""
-) {
+function adminHeader(title, commentCount = 0) {
 
-  const texts =
-    await getTexts(env);
+  return `
 
-  return page(`
+    <header class="dashboard-header">
 
-    <a
-      class="back"
-      href="/admin"
-    >
-      ← Dashboard
-    </a>
+      <div>
 
-    <header>
+        <a
+          class="back-link"
+          href="/admin"
+        >
+          ← Dashboard
+        </a>
 
-      <p class="subtitle">
-        Verwaltung
-      </p>
+        <p class="subtitle">
+          Admin-Bereich
+        </p>
 
-      <h1 class="logo">
-        Texte
-      </h1>
+        <h1 class="section-title">
+          ${esc(title)}
+        </h1>
+
+      </div>
+
+
+      <form method="POST">
+
+        <input
+          type="hidden"
+          name="action"
+          value="logout"
+        >
+
+        <button
+          type="submit"
+          class="secondary"
+        >
+          Abmelden
+        </button>
+
+      </form>
 
     </header>
 
+
+    <nav class="menu-nav">
+
+      <a href="/admin/texts">
+        Texte
+      </a>
+
+      <a href="/admin/text/new">
+        Neuer Text
+      </a>
+
+      <a href="/admin/folders">
+        Ordner
+      </a>
+
+      <a href="/admin/comments">
+        Kommentare
+        ${
+          commentCount
+            ? `<span class="notification">${commentCount}</span>`
+            : ""
+        }
+      </a>
+
+      <a href="/admin/trash">
+        Papierkorb
+      </a>
+
+      <a href="/admin/passwords">
+        Passwörter
+      </a>
+
+      <a href="/admin/settings">
+        Einstellungen
+      </a>
+
+      <a href="/">
+        Website
+      </a>
+
+    </nav>
+  `;
+}
+
+
+function adminTextsPage(
+  texts,
+  folders,
+  commentCount = 0,
+  message = ""
+) {
+
+  return page(`
+
+    ${adminHeader("Texte", commentCount)}
+
+
     ${
       message
-        ? `<p class="message">${esc(message)}</p>`
+        ? `<p class="message success">${esc(message)}</p>`
         : ""
     }
 
-    <section>
 
-      <div class="card">
+    <section class="card">
 
-        ${
-          texts.length
-            ? `
-              <div class="admin-list">
+      ${
+        texts.length
 
-                ${texts.map(text => `
+          ? texts.map(text => {
 
-                  <div class="admin-item">
+              const folder =
+                folders.find(
+                  item =>
+                    String(item.id) === String(text.folder)
+                );
 
-                    <div class="admin-item-title">
-                      ${esc(text.title)}
-                    </div>
+              return `
 
-                    <div class="meta-row">
+                <div class="admin-list-item">
 
-                      <span class="meta">
-                        Ordner:
-                        ${esc(text.folder)}
-                      </span>
+                  <div class="admin-list-title">
+                    ${esc(text.title)}
+                  </div>
 
-                      <span class="meta">
-                        ${esc(
-                          visibilityName(text.visibility)
-                        )}
-                      </span>
 
-                      <span class="meta">
-                        Erstellt:
-                        ${esc(
-                          formatDate(text.created_at)
-                        )}
-                      </span>
+                  <div class="meta">
 
-                      <span class="meta">
-                        Bearbeitet:
-                        ${esc(
-                          formatDate(text.updated_at)
-                        )}
-                      </span>
+                    <span>
+                      ${esc(
+                        visibilityLabel(text.visibility)
+                      )}
+                    </span>
 
-                    </div>
+                    <span>
+                      Ordner:
+                      ${esc(folder?.name || text.folder || "Ohne Ordner")}
+                    </span>
 
-                    <div class="admin-actions">
+                    <span>
+                      Erstellt:
+                      ${esc(formatDate(text.created_at))}
+                    </span>
 
-                      <a
-                        class="button secondary"
-                        href="/admin/text/${encodeURIComponent(text.id)}"
-                      >
-                        Öffnen / Bearbeiten
-                      </a>
-
-                      <form method="POST">
-
-                        <input
-                          type="hidden"
-                          name="action"
-                          value="delete_text"
-                        >
-
-                        <input
-                          type="hidden"
-                          name="id"
-                          value="${esc(text.id)}"
-                        >
-
-                        <button
-                          class="danger"
-                          type="submit"
-                        >
-                          In Papierkorb
-                        </button>
-
-                      </form>
-
-                    </div>
+                    <span>
+                      Bearbeitet:
+                      ${esc(formatDate(text.updated_at))}
+                    </span>
 
                   </div>
 
-                `).join("")}
 
-              </div>
-            `
+                  <div class="admin-actions">
+
+                    <a href="/admin/text/${encodeURIComponent(text.id)}">
+                      <button
+                        type="button"
+                        class="secondary"
+                      >
+                        Öffnen / Bearbeiten
+                      </button>
+                    </a>
+
+
+                    <form method="POST">
+
+                      <input
+                        type="hidden"
+                        name="action"
+                        value="delete_text"
+                      >
+
+                      <input
+                        type="hidden"
+                        name="id"
+                        value="${esc(text.id)}"
+                      >
+
+                      <button
+                        type="submit"
+                        class="danger"
+                      >
+                        In Papierkorb
+                      </button>
+
+                    </form>
+
+                  </div>
+
+                </div>
+
+              `;
+            }).join("")
+
+          : `
+            <div class="empty">
+              Noch keine Texte vorhanden.
+            </div>
+          `
+      }
+
+    </section>
+
+  `, "Texte – NiB");
+}
+
+
+function adminTextFormPage(
+  text,
+  folders,
+  images,
+  commentCount = 0,
+  message = ""
+) {
+
+  const isNew = !text;
+
+  return page(`
+
+    ${adminHeader(
+      isNew
+        ? "Neuer Text"
+        : "Text bearbeiten",
+      commentCount
+    )}
+
+
+    ${
+      message
+        ? `<p class="message success">${esc(message)}</p>`
+        : ""
+    }
+
+
+    <section class="card">
+
+      <form
+        method="POST"
+        enctype="multipart/form-data"
+      >
+
+        <input
+          type="hidden"
+          name="action"
+          value="${isNew ? "create_text" : "update_text"}"
+        >
+
+
+        ${
+          isNew
+            ? ""
             : `
-              <p class="empty">
-                Noch keine Texte vorhanden.
-              </p>
+              <input
+                type="hidden"
+                name="id"
+                value="${esc(text.id)}"
+              >
             `
         }
 
-      </div>
 
-    </section>
+        <label>
 
-  `, "Texte");
-}
-
-
-// ─────────────────────────────────────
-// Admin – Neuer Text
-// ─────────────────────────────────────
-
-async function adminNewTextPage(
-  env,
-  message = ""
-) {
-
-  const folders =
-    await getFolders(env);
-
-  return page(`
-
-    <a
-      class="back"
-      href="/admin"
-    >
-      ← Dashboard
-    </a>
-
-    <header>
-
-      <p class="subtitle">
-        Verwaltung
-      </p>
-
-      <h1 class="logo">
-        Neuer Text
-      </h1>
-
-    </header>
-
-    ${
-      message
-        ? `<p class="message">${esc(message)}</p>`
-        : ""
-    }
-
-    <section>
-
-      <div class="card">
-
-        <form
-          method="POST"
-          enctype="multipart/form-data"
-        >
+          Titel
 
           <input
-            type="hidden"
-            name="action"
-            value="create_text"
+            type="text"
+            name="title"
+            value="${esc(text?.title || "")}"
+            required
           >
 
-          <label>
-            Titel
+        </label>
 
-            <input
-              type="text"
-              name="title"
-              required
-              maxlength="500"
-              placeholder="Titel"
-            >
-          </label>
 
+        <div class="form-row">
 
           <label>
+
             Ordner
 
             <select name="folder">
@@ -1841,11 +1923,23 @@ async function adminNewTextPage(
                 Ohne Ordner
               </option>
 
-              ${folders.map(folder => `
-                <option value="${esc(folder.name)}">
-                  ${esc(folder.name)}
-                </option>
-              `).join("")}
+              ${
+                folders.map(folder => `
+
+                  <option
+                    value="${esc(folder.id)}"
+                    ${
+                      String(text?.folder || "") ===
+                      String(folder.id)
+                        ? "selected"
+                        : ""
+                    }
+                  >
+                    ${esc(folder.name)}
+                  </option>
+
+                `).join("")
+              }
 
             </select>
 
@@ -1853,225 +1947,7 @@ async function adminNewTextPage(
 
 
           <label>
-            Sichtbarkeit
 
-            <select
-              name="visibility"
-              id="visibility"
-            >
-
-              <option value="public">
-                Öffentlich
-              </option>
-
-              <option value="semi_private">
-                Halbprivat
-              </option>
-
-              <option value="private">
-                Privat
-              </option>
-
-            </select>
-
-          </label>
-
-
-          <label>
-            Eigenes Passwort für halbprivaten Text
-            (optional)
-
-            <input
-              type="password"
-              name="custom_password"
-              autocomplete="new-password"
-              placeholder="Leer lassen = allgemeines halbprivates Passwort"
-            >
-          </label>
-
-
-          <label>
-            Inhalt
-
-            <textarea
-              name="content"
-              placeholder="Deinen Text schreiben..."
-              required
-            ></textarea>
-          </label>
-
-
-          <label>
-            Bilder
-
-            <input
-              type="file"
-              name="images"
-              accept="image/*"
-              multiple
-            >
-          </label>
-
-
-          <div class="form-actions">
-
-            <button type="submit">
-              Text speichern
-            </button>
-
-            <a
-              class="button secondary"
-              href="/admin"
-            >
-              Abbrechen
-            </a>
-
-          </div>
-
-        </form>
-
-      </div>
-
-    </section>
-
-  `, "Neuer Text");
-}
-
-
-// ─────────────────────────────────────
-// Admin – Text bearbeiten
-// ─────────────────────────────────────
-
-async function adminEditTextPage(
-  env,
-  textId,
-  message = ""
-) {
-
-  const text =
-    await getText(env, textId);
-
-  if (!text) {
-
-    return page(`
-
-      <a
-        class="back"
-        href="/admin/texts"
-      >
-        ← Texte
-      </a>
-
-      <div class="card">
-        Text nicht gefunden.
-      </div>
-
-    `, "Nicht gefunden");
-  }
-
-  const folders =
-    await getFolders(env);
-
-  const images =
-    await getImages(env, text.id);
-
-  const comments =
-    await getComments(env, text.id);
-
-  const likes =
-    await getLikeCount(env, text.id);
-
-  return page(`
-
-    <a
-      class="back"
-      href="/admin/texts"
-    >
-      ← Texte
-    </a>
-
-    <header>
-
-      <p class="subtitle">
-        Text bearbeiten
-      </p>
-
-      <h1 class="logo">
-        ${esc(text.title)}
-      </h1>
-
-    </header>
-
-    ${
-      message
-        ? `<p class="message">${esc(message)}</p>`
-        : ""
-    }
-
-
-    <section>
-
-      <div class="card">
-
-        <form
-          method="POST"
-          enctype="multipart/form-data"
-        >
-
-          <input
-            type="hidden"
-            name="action"
-            value="update_text"
-          >
-
-          <input
-            type="hidden"
-            name="id"
-            value="${esc(text.id)}"
-          >
-
-
-          <label>
-            Titel
-
-            <input
-              type="text"
-              name="title"
-              maxlength="500"
-              value="${esc(text.title)}"
-              required
-            >
-          </label>
-
-
-          <label>
-            Ordner
-
-            <select name="folder">
-
-              <option value="">
-                Ohne Ordner
-              </option>
-
-              ${folders.map(folder => `
-                <option
-                  value="${esc(folder.name)}"
-                  ${
-                    folder.name === text.folder
-                      ? "selected"
-                      : ""
-                  }
-                >
-                  ${esc(folder.name)}
-                </option>
-              `).join("")}
-
-            </select>
-
-          </label>
-
-
-          <label>
             Sichtbarkeit
 
             <select name="visibility">
@@ -2079,7 +1955,7 @@ async function adminEditTextPage(
               <option
                 value="public"
                 ${
-                  text.visibility === "public"
+                  text?.visibility === "public"
                     ? "selected"
                     : ""
                 }
@@ -2090,7 +1966,7 @@ async function adminEditTextPage(
               <option
                 value="semi_private"
                 ${
-                  text.visibility === "semi_private"
+                  text?.visibility === "semi_private"
                     ? "selected"
                     : ""
                 }
@@ -2101,7 +1977,7 @@ async function adminEditTextPage(
               <option
                 value="private"
                 ${
-                  text.visibility === "private"
+                  text?.visibility === "private"
                     ? "selected"
                     : ""
                 }
@@ -2113,404 +1989,317 @@ async function adminEditTextPage(
 
           </label>
 
-
-          <div class="password-box">
-
-            <strong>
-              Passwort dieses Textes
-            </strong>
-
-            <p class="muted">
-
-              ${
-                text.visibility === "semi_private"
-                  ? text.password
-                    ? "Für diesen Text wurde ein eigenes Passwort gesetzt."
-                    : "Dieser Text verwendet das allgemeine halbprivate Passwort."
-                  : "Für diese Sichtbarkeit wird kein Besucherpasswort benötigt."
-              }
-
-            </p>
-
-            ${
-              text.password
-                ? `
-                  <p>
-                    Eigenes Passwort ist gesetzt.
-                  </p>
-                `
-                : `
-                  <p>
-                    Allgemeines halbprivates Passwort
-                    wird verwendet.
-                  </p>
-                `
-            }
-
-            <label>
-              Neues eigenes Passwort
-              (leer lassen = bisherige Einstellung)
-
-              <input
-                type="password"
-                name="custom_password"
-                autocomplete="new-password"
-              >
-            </label>
-
-            <label>
-              <input
-                type="checkbox"
-                name="remove_password"
-                value="1"
-                style="width:auto;margin-right:8px;"
-              >
-
-              Eigenes Passwort entfernen und
-              allgemeines Passwort verwenden
-            </label>
-
-          </div>
+        </div>
 
 
-          <label>
-            Inhalt
+        <label>
 
-            <textarea
-              name="content"
-              required
-            >${esc(text.content)}</textarea>
-          </label>
+          Inhalt
 
+          <textarea
+            name="content"
+            placeholder="Deinen Text schreiben..."
+            required
+          >${esc(text?.content || "")}</textarea>
 
-          <label>
-            Weitere Bilder hochladen
-
-            <input
-              type="file"
-              name="images"
-              accept="image/*"
-              multiple
-            >
-          </label>
+        </label>
 
 
-          <div class="form-actions">
+        <label>
 
-            <button type="submit">
-              Änderungen speichern
-            </button>
+          Eigenes Halbprivat-Passwort
+          <span class="small">
+            Leer lassen = allgemeines Halbprivat-Passwort verwenden.
+          </span>
 
-            <a
-              class="button secondary"
-              href="/text/${encodeURIComponent(text.id)}"
-              target="_blank"
-            >
-              Text ansehen
-            </a>
+          <input
+            type="text"
+            name="custom_password"
+            value="${esc(text?.password || "")}"
+            autocomplete="off"
+            placeholder="Optionales eigenes Passwort"
+          >
 
-          </div>
-
-        </form>
-
-      </div>
-
-    </section>
+        </label>
 
 
-    ${
-      images.length
-        ? `
-          <section>
+        <label>
 
-            <h2 class="section-title">
-              Bilder
-            </h2>
+          Bilder
 
-            <div class="card">
+          <input
+            type="file"
+            name="images"
+            accept="image/*"
+            multiple
+          >
 
-              <div class="image-gallery">
+          <span class="small">
+            Bilder werden kostenlos über Cloudinary gespeichert.
+          </span>
 
-                ${images.map(image => `
+        </label>
 
-                  <div>
 
-                    <img
-                      src="${esc(image.r2_key)}"
-                      alt="${esc(image.filename || "Bild")}"
-                    >
+        <button type="submit">
+          ${isNew ? "Text speichern" : "Änderungen speichern"}
+        </button>
 
-                    <form
-                      method="POST"
-                      style="margin-top:8px;"
-                    >
+      </form>
 
-                      <input
-                        type="hidden"
-                        name="action"
-                        value="delete_image"
-                      >
 
-                      <input
-                        type="hidden"
-                        name="id"
-                        value="${esc(image.id)}"
-                      >
+      ${
+        !isNew
+          ? `
 
-                      <button
-                        type="submit"
-                        class="danger"
-                      >
-                        Bild löschen
-                      </button>
+            <div class="password-box">
 
-                    </form>
+              <strong>
+                Passwort für diesen Text
+              </strong>
 
-                  </div>
+              <div class="small muted">
+                Nur relevant, wenn der Text halbprivat ist.
+              </div>
 
-                `).join("")}
+              <div class="password-value">
+
+                ${
+                  text.password
+                    ? esc(text.password)
+                    : "Allgemeines Halbprivat-Passwort"
+                }
 
               </div>
 
             </div>
 
-          </section>
-        `
-        : ""
-    }
+          `
+          : ""
+      }
 
 
-    <section>
+      ${
+        images.length
+          ? `
 
-      <h2 class="section-title">
-        Statistik
-      </h2>
+            <div class="section">
 
-      <div class="card">
+              <h2 class="section-title">
+                Bilder
+              </h2>
 
-        <div class="meta-row">
+              <div class="image-admin">
 
-          <span class="meta">
-            Likes: ${likes}
-          </span>
+                ${
+                  images.map(image => `
 
-          <span class="meta">
-            Kommentare: ${comments.length}
-          </span>
+                    <figure>
 
-          <span class="meta">
-            Erstellt:
-            ${esc(formatDate(text.created_at))}
-          </span>
+                      <img
+                        src="${esc(image.url)}"
+                        alt="${esc(image.filename || "")}"
+                      >
 
-          <span class="meta">
-            Zuletzt bearbeitet:
-            ${esc(formatDate(text.updated_at))}
-          </span>
+                      <figcaption class="small muted">
+                        ${esc(image.filename || "Bild")}
+                      </figcaption>
 
-        </div>
+                    </figure>
 
-      </div>
+                  `).join("")
+                }
+
+              </div>
+
+            </div>
+
+          `
+          : ""
+      }
 
     </section>
 
-  `, text.title);
+  `, isNew ? "Neuer Text – NiB" : text.title);
 }
 
 
-// ─────────────────────────────────────
-// Admin – Ordner
-// ─────────────────────────────────────
-
-async function adminFoldersPage(
-  env,
+function adminFoldersPage(
+  folders,
+  commentCount = 0,
   message = ""
 ) {
 
-  const folders =
-    await getFolders(env);
-
   return page(`
 
-    <a
-      class="back"
-      href="/admin"
-    >
-      ← Dashboard
-    </a>
+    ${adminHeader("Ordner", commentCount)}
 
-    <header>
-
-      <p class="subtitle">
-        Verwaltung
-      </p>
-
-      <h1 class="logo">
-        Ordner
-      </h1>
-
-    </header>
 
     ${
       message
-        ? `<p class="message">${esc(message)}</p>`
+        ? `<p class="message success">${esc(message)}</p>`
         : ""
     }
 
-    <section>
 
-      <div class="card">
+    <section class="card">
 
-        <form
-          method="POST"
-          class="form-actions"
+      <form method="POST">
+
+        <input
+          type="hidden"
+          name="action"
+          value="create_folder"
         >
 
-          <input
-            type="hidden"
-            name="action"
-            value="create_folder"
-          >
+
+        <label>
+
+          Neuer Ordner
 
           <input
             type="text"
             name="name"
-            placeholder="Neuer Ordner"
+            placeholder="Ordnername"
             required
           >
 
-          <button type="submit">
-            Erstellen
-          </button>
-
-        </form>
-
-      </div>
-
-    </section>
+        </label>
 
 
-    <section>
+        <button type="submit">
+          Ordner erstellen
+        </button>
 
-      <div class="card">
+      </form>
+
+
+      <div style="margin-top:30px">
 
         ${
           folders.length
-            ? `
-              <div class="admin-list">
 
-                ${folders.map(folder => `
+            ? folders.map(folder => `
 
-                  <div class="admin-item">
+              <div class="admin-list-item">
 
-                    <div class="admin-item-title">
-                      ${esc(folder.name)}
-                    </div>
+                <div class="admin-list-title">
+                  ${esc(folder.name)}
+                </div>
 
-                    <div class="meta">
+
+                <div class="meta">
+
+                  <span>
+                    ${
+                      Number(folder.is_private)
+                        ? "Privater Ordner"
+                        : "Öffentlicher Ordner"
+                    }
+                  </span>
+
+                  <span>
+                    Erstellt:
+                    ${esc(formatDate(folder.created_at))}
+                  </span>
+
+                </div>
+
+
+                <div class="admin-actions">
+
+                  <form method="POST">
+
+                    <input
+                      type="hidden"
+                      name="action"
+                      value="rename_folder"
+                    >
+
+                    <input
+                      type="hidden"
+                      name="id"
+                      value="${esc(folder.id)}"
+                    >
+
+                    <input
+                      type="text"
+                      name="name"
+                      placeholder="Neuer Name"
+                      required
+                    >
+
+                    <button
+                      type="submit"
+                      class="secondary"
+                    >
+                      Umbenennen
+                    </button>
+
+                  </form>
+
+
+                  <form method="POST">
+
+                    <input
+                      type="hidden"
+                      name="action"
+                      value="toggle_folder"
+                    >
+
+                    <input
+                      type="hidden"
+                      name="id"
+                      value="${esc(folder.id)}"
+                    >
+
+                    <button
+                      type="submit"
+                      class="secondary"
+                    >
                       ${
-                        folder.is_private
-                          ? "Privater Ordner"
-                          : "Öffentlicher Ordner"
+                        Number(folder.is_private)
+                          ? "Öffentlich stellen"
+                          : "Privat stellen"
                       }
-                    </div>
+                    </button>
 
-                    <div class="admin-actions">
-
-                      <form method="POST">
-
-                        <input
-                          type="hidden"
-                          name="action"
-                          value="rename_folder"
-                        >
-
-                        <input
-                          type="hidden"
-                          name="id"
-                          value="${esc(folder.id)}"
-                        >
-
-                        <input
-                          type="text"
-                          name="name"
-                          placeholder="Neuer Name"
-                          required
-                        >
-
-                        <button
-                          class="secondary"
-                          type="submit"
-                        >
-                          Umbenennen
-                        </button>
-
-                      </form>
+                  </form>
 
 
-                      <form method="POST">
+                  <form method="POST">
 
-                        <input
-                          type="hidden"
-                          name="action"
-                          value="toggle_folder"
-                        >
+                    <input
+                      type="hidden"
+                      name="action"
+                      value="delete_folder"
+                    >
 
-                        <input
-                          type="hidden"
-                          name="id"
-                          value="${esc(folder.id)}"
-                        >
+                    <input
+                      type="hidden"
+                      name="id"
+                      value="${esc(folder.id)}"
+                    >
 
-                        <button
-                          class="secondary"
-                          type="submit"
-                        >
-                          ${
-                            folder.is_private
-                              ? "Öffentlich stellen"
-                              : "Privat stellen"
-                          }
-                        </button>
+                    <button
+                      type="submit"
+                      class="danger"
+                    >
+                      Löschen
+                    </button>
 
-                      </form>
+                  </form>
 
-
-                      <form method="POST">
-
-                        <input
-                          type="hidden"
-                          name="action"
-                          value="delete_folder"
-                        >
-
-                        <input
-                          type="hidden"
-                          name="id"
-                          value="${esc(folder.id)}"
-                        >
-
-                        <button
-                          class="danger"
-                          type="submit"
-                        >
-                          Löschen
-                        </button>
-
-                      </form>
-
-                    </div>
-
-                  </div>
-
-                `).join("")}
+                </div>
 
               </div>
-            `
+
+            `).join("")
+
             : `
-              <p class="empty">
+              <div class="empty">
                 Noch keine Ordner vorhanden.
-              </p>
+              </div>
             `
         }
 
@@ -2518,289 +2307,362 @@ async function adminFoldersPage(
 
     </section>
 
-  `, "Ordner");
+  `, "Ordner – NiB");
 }
 
 
-// ─────────────────────────────────────
-// Admin – Kommentare
-// ─────────────────────────────────────
-
-async function adminCommentsPage(
-  env,
+function adminCommentsPage(
+  comments,
+  commentCount = 0,
   message = ""
 ) {
 
-  const comments =
-    await getAllComments(env);
-
-  await clearUnreadComments(env);
-
   return page(`
 
-    <a
-      class="back"
-      href="/admin"
-    >
-      ← Dashboard
-    </a>
+    ${adminHeader("Kommentare", commentCount)}
 
-    <header>
-
-      <p class="subtitle">
-        Verwaltung
-      </p>
-
-      <h1 class="logo">
-        Kommentare
-      </h1>
-
-    </header>
 
     ${
       message
-        ? `<p class="message">${esc(message)}</p>`
+        ? `<p class="message success">${esc(message)}</p>`
         : ""
     }
 
 
-    <section>
+    <section class="card">
 
-      <div class="card">
+      ${
+        comments.length
 
-        ${
-          comments.length
-            ? `
-              <div class="admin-list">
+          ? comments.map(comment => `
 
-                ${comments.map(comment => `
+            <div class="admin-list-item">
 
-                  <div class="admin-item">
+              <div class="admin-list-title">
 
-                    <div class="admin-item-title">
-                      ${esc(
-                        comment.title ||
-                        "Gelöschter Text"
-                      )}
-                    </div>
+                ${
+                  comment.author_name
+                    ? esc(comment.author_name)
+                    : "Anonym"
+                }
 
-                    <div class="meta-row">
+              </div>
 
-                      <span class="meta">
-                        ${
-                          comment.author_name?.trim()
-                            ? comment.author_name
-                            : "Anonym"
-                        }
-                      </span>
 
-                      <span class="meta">
-                        ${esc(
-                          formatDate(
-                            comment.created_at
-                          )
-                        )}
-                      </span>
+              <div class="meta">
 
-                    </div>
+                <span>
+                  Text:
+                  ${esc(comment.title)}
+                </span>
 
-                    <p>
-                      ${esc(comment.comment)}
-                    </p>
+                <span>
+                  ${esc(formatDate(comment.created_at))}
+                </span>
+
+              </div>
+
+
+              <div
+                style="
+                  margin-top:10px;
+                  white-space:pre-wrap;
+                  overflow-wrap:anywhere;
+                "
+              >
+                ${esc(comment.comment)}
+              </div>
+
+
+              <div class="admin-actions">
+
+                <form method="POST">
+
+                  <input
+                    type="hidden"
+                    name="action"
+                    value="delete_comment"
+                  >
+
+                  <input
+                    type="hidden"
+                    name="id"
+                    value="${esc(comment.id)}"
+                  >
+
+                  <button
+                    type="submit"
+                    class="danger"
+                  >
+                    Kommentar löschen
+                  </button>
+
+                </form>
+
+              </div>
+
+            </div>
+
+          `).join("")
+
+          : `
+            <div class="empty">
+              Keine Kommentare vorhanden.
+            </div>
+          `
+      }
+
+    </section>
+
+  `, "Kommentare – NiB");
+}
+
+
+function adminTrashPage(
+  texts,
+  folders,
+  commentCount = 0,
+  message = ""
+) {
+
+  return page(`
+
+    ${adminHeader("Papierkorb", commentCount)}
+
+
+    ${
+      message
+        ? `<p class="message success">${esc(message)}</p>`
+        : ""
+    }
+
+
+    <section class="card">
+
+      ${
+        texts.length
+
+          ? texts.map(text => {
+
+              const folder =
+                folders.find(
+                  item =>
+                    String(item.id) === String(text.folder)
+                );
+
+              return `
+
+                <div class="admin-list-item">
+
+                  <div class="admin-list-title">
+                    ${esc(text.title)}
+                  </div>
+
+                  <div class="meta">
+
+                    <span>
+                      Ordner:
+                      ${esc(folder?.name || text.folder || "Ohne Ordner")}
+                    </span>
+
+                    <span>
+                      Gelöscht:
+                      ${esc(formatDate(text.deleted_at))}
+                    </span>
+
+                  </div>
+
+
+                  <div class="admin-actions">
 
                     <form method="POST">
 
                       <input
                         type="hidden"
                         name="action"
-                        value="delete_comment"
+                        value="restore_text"
                       >
 
                       <input
                         type="hidden"
                         name="id"
-                        value="${esc(comment.id)}"
+                        value="${esc(text.id)}"
                       >
 
                       <button
-                        class="danger"
                         type="submit"
+                        class="secondary"
                       >
-                        Kommentar löschen
+                        Wiederherstellen
+                      </button>
+
+                    </form>
+
+
+                    <form method="POST">
+
+                      <input
+                        type="hidden"
+                        name="action"
+                        value="permanent_delete_text"
+                      >
+
+                      <input
+                        type="hidden"
+                        name="id"
+                        value="${esc(text.id)}"
+                      >
+
+                      <button
+                        type="submit"
+                        class="danger"
+                      >
+                        Endgültig löschen
                       </button>
 
                     </form>
 
                   </div>
 
-                `).join("")}
+                </div>
 
-              </div>
-            `
-            : `
-              <p class="empty">
-                Keine Kommentare vorhanden.
-              </p>
-            `
-        }
+              `;
+            }).join("")
 
-      </div>
+          : `
+            <div class="empty">
+              Der Papierkorb ist leer.
+            </div>
+          `
+      }
 
     </section>
 
-  `, "Kommentare");
+  `, "Papierkorb – NiB");
 }
 
 
-// ─────────────────────────────────────
-// Admin – Papierkorb
-// ─────────────────────────────────────
-
-async function adminTrashPage(
-  env,
+function adminPasswordsPage(
+  texts,
+  commentCount = 0,
   message = ""
 ) {
 
-  const result =
-    await env.DB.prepare(`
-      SELECT
-        id,
-        title,
-        folder,
-        visibility,
-        created_at,
-        updated_at,
-        deleted_at
-      FROM texts
-      WHERE deleted_at IS NOT NULL
-      ORDER BY deleted_at DESC
-    `)
-    .all();
-
-  const texts =
-    result.results || [];
-
   return page(`
 
-    <a
-      class="back"
-      href="/admin"
-    >
-      ← Dashboard
-    </a>
+    ${adminHeader("Passwörter", commentCount)}
 
-    <header>
-
-      <p class="subtitle">
-        Verwaltung
-      </p>
-
-      <h1 class="logo">
-        Papierkorb
-      </h1>
-
-    </header>
 
     ${
       message
-        ? `<p class="message">${esc(message)}</p>`
+        ? `<p class="message success">${esc(message)}</p>`
         : ""
     }
 
+
+    <section class="card">
+
+      <h2 class="section-title">
+        Allgemeines Halbprivat-Passwort
+      </h2>
+
+      <p class="muted">
+
+        Das allgemeine Passwort wird als
+        Cloudflare-Secret
+        <strong>SEMI_PRIVATE_PASSWORD</strong>
+        gespeichert.
+
+      </p>
+
+      <p class="small muted">
+
+        Neue halbprivate Texte verwenden automatisch
+        dieses Passwort, solange kein eigenes Passwort
+        für den jeweiligen Text eingetragen wurde.
+
+      </p>
+
+    </section>
+
+
     <section>
+
+      <h2 class="section-title">
+        Passwörter der einzelnen Texte
+      </h2>
+
 
       <div class="card">
 
         ${
           texts.length
-            ? `
-              <div class="admin-list">
 
-                ${texts.map(text => `
+            ? texts.map(text => `
 
-                  <div class="admin-item">
+              <div class="admin-list-item">
 
-                    <div class="admin-item-title">
-                      ${esc(text.title)}
-                    </div>
+                <div class="admin-list-title">
+                  ${esc(text.title)}
+                </div>
 
-                    <div class="meta-row">
 
-                      <span class="meta">
-                        ${esc(text.folder)}
-                      </span>
+                <div class="meta">
 
-                      <span class="meta">
-                        Gelöscht:
-                        ${esc(
-                          formatDate(
-                            text.deleted_at
-                          )
-                        )}
-                      </span>
+                  <span>
+                    ${esc(
+                      visibilityLabel(text.visibility)
+                    )}
+                  </span>
 
-                    </div>
+                </div>
 
-                    <div class="admin-actions">
 
-                      <form method="POST">
+                <div class="password-box">
 
-                        <input
-                          type="hidden"
-                          name="action"
-                          value="restore_text"
-                        >
+                  ${
+                    text.visibility === "semi_private"
 
-                        <input
-                          type="hidden"
-                          name="id"
-                          value="${esc(text.id)}"
-                        >
+                      ? (
+                          text.password
+                            ? `
+                              <strong>
+                                Aktuelles Passwort:
+                              </strong>
 
-                        <button
-                          type="submit"
-                          class="secondary"
-                        >
-                          Wiederherstellen
-                        </button>
+                              <div class="password-value">
+                                ${esc(text.password)}
+                              </div>
+                            `
+                            : `
+                              <strong>
+                                Aktuelles Passwort:
+                              </strong>
 
-                      </form>
+                              <div class="password-value">
+                                Allgemeines Halbprivat-Passwort
+                              </div>
+                            `
+                        )
 
-                      <form method="POST">
+                      : `
+                        <span class="muted">
+                          Für diesen Text ist kein öffentliches
+                          Passwort erforderlich.
+                        </span>
+                      `
+                  }
 
-                        <input
-                          type="hidden"
-                          name="action"
-                          value="destroy_text"
-                        >
-
-                        <input
-                          type="hidden"
-                          name="id"
-                          value="${esc(text.id)}"
-                        >
-
-                        <button
-                          type="submit"
-                          class="danger"
-                        >
-                          Endgültig löschen
-                        </button>
-
-                      </form>
-
-                    </div>
-
-                  </div>
-
-                `).join("")}
+                </div>
 
               </div>
-            `
+
+            `).join("")
+
             : `
-              <p class="empty">
-                Der Papierkorb ist leer.
-              </p>
+              <div class="empty">
+                Noch keine Texte vorhanden.
+              </div>
             `
         }
 
@@ -2808,190 +2670,602 @@ async function adminTrashPage(
 
     </section>
 
-  `, "Papierkorb");
+  `, "Passwörter – NiB");
 }
 
 
-// ─────────────────────────────────────
-// Admin – Passwörter & Einstellungen
-// ─────────────────────────────────────
-
-async function adminSettingsPage(
-  env,
+function adminSettingsPage(
+  commentCount = 0,
   message = ""
 ) {
 
   return page(`
 
-    <a
-      class="back"
-      href="/admin"
-    >
-      ← Dashboard
-    </a>
+    ${adminHeader("Einstellungen", commentCount)}
 
-    <header>
-
-      <p class="subtitle">
-        Verwaltung
-      </p>
-
-      <h1 class="logo">
-        Passwörter & Einstellungen
-      </h1>
-
-    </header>
 
     ${
       message
-        ? `<p class="message">${esc(message)}</p>`
+        ? `<p class="message success">${esc(message)}</p>`
         : ""
     }
 
 
-    <section>
+    <section class="card">
 
       <h2 class="section-title">
-        Zugriffsschutz
+        NiB
       </h2>
 
-      <div class="card">
+      <p class="muted">
+        Die wichtigsten Bereiche des Archivs sind
+        über das Dashboard getrennt erreichbar.
+      </p>
 
-        <p>
-          <strong>Admin-Passwort</strong>
-        </p>
-
-        <p class="muted">
-          Das Admin-Passwort wird als Cloudflare
-          Secret gespeichert und nicht in der
-          Datenbank abgelegt.
-        </p>
-
-
-        <p>
-          <strong>
-            Allgemeines halbprivates Passwort
-          </strong>
-        </p>
-
-        <p class="muted">
-          Dieses Passwort wird ebenfalls als
-          Cloudflare Secret gespeichert und gilt
-          automatisch für neue halbprivate Texte,
-          sofern kein eigenes Passwort gesetzt wird.
-        </p>
-
-        <div class="password-box">
-
-          <strong>
-            Passwortstatus
-          </strong>
-
-          <p class="muted">
-            Admin-Passwort:
-            konfiguriert
-          </p>
-
-          <p class="muted">
-            Halbprivates Passwort:
-            ${
-              env.SEMI_PRIVATE_PASSWORD
-                ? "konfiguriert"
-                : "nicht konfiguriert"
-            }
-          </p>
-
-        </div>
-
-      </div>
+      <p class="small muted">
+        Das Admin-Passwort und die Cloudinary-Zugangsdaten
+        bleiben als Cloudflare-Secrets gespeichert.
+      </p>
 
     </section>
 
-
-    <section>
-
-      <h2 class="section-title">
-        Cloudinary
-      </h2>
-
-      <div class="card">
-
-        <p class="muted">
-          Cloudinary wird für Bilder verwendet.
-        </p>
-
-        <p>
-          Cloud-Name:
-          <strong>
-            ${esc(env.CLOUDINARY_CLOUD_NAME || "nicht gesetzt")}
-          </strong>
-        </p>
-
-        <p class="muted">
-          API-Schlüssel und API-Secret bleiben
-          ausschließlich als Cloudflare Secrets
-          gespeichert.
-        </p>
-
-      </div>
-
-    </section>
-
-
-    <section>
-
-      <h2 class="section-title">
-        Kommentare
-      </h2>
-
-      <div class="card">
-
-        <p class="muted">
-          Kommentare können von Besuchern geschrieben
-          werden. Gelöscht werden können sie nur im
-          Adminbereich.
-        </p>
-
-      </div>
-
-    </section>
-
-  `, "Passwörter & Einstellungen");
+  `, "Einstellungen – NiB");
 }
 
 
-// ─────────────────────────────────────
-// Passwortprüfung
-// ─────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────
+// 07. DATENBANK-FUNKTIONEN
+// ─────────────────────────────────────────────────────────────────────
 
-function textPasswordIsCorrect(
-  text,
-  password,
-  env
+async function getFolders(env, includeDeleted = false) {
+
+  const query = includeDeleted
+    ? `
+      SELECT
+        id,
+        name,
+        is_private,
+        created_at,
+        updated_at,
+        deleted_at
+      FROM folders
+      ORDER BY name COLLATE NOCASE
+    `
+    : `
+      SELECT
+        id,
+        name,
+        is_private,
+        created_at,
+        updated_at,
+        deleted_at
+      FROM folders
+      WHERE deleted_at IS NULL
+      ORDER BY name COLLATE NOCASE
+    `;
+
+  const result =
+    await env.DB.prepare(query).all();
+
+  return result.results || [];
+}
+
+
+async function getTexts(
+  env,
+  includeDeleted = false
 ) {
 
-  if (text.visibility === "public") {
-    return true;
+  const query = includeDeleted
+    ? `
+      SELECT
+        id,
+        title,
+        content,
+        folder,
+        visibility,
+        password,
+        updated_at,
+        created_at,
+        deleted_at
+      FROM texts
+      ORDER BY updated_at DESC
+    `
+    : `
+      SELECT
+        id,
+        title,
+        content,
+        folder,
+        visibility,
+        password,
+        updated_at,
+        created_at,
+        deleted_at
+      FROM texts
+      WHERE deleted_at IS NULL
+      ORDER BY updated_at DESC
+    `;
+
+  const result =
+    await env.DB.prepare(query).all();
+
+  return result.results || [];
+}
+
+
+async function getTextById(
+  env,
+  id,
+  includeDeleted = false
+) {
+
+  const query = includeDeleted
+    ? `
+      SELECT
+        id,
+        title,
+        content,
+        folder,
+        visibility,
+        password,
+        updated_at,
+        created_at,
+        deleted_at
+      FROM texts
+      WHERE id = ?
+    `
+    : `
+      SELECT
+        id,
+        title,
+        content,
+        folder,
+        visibility,
+        password,
+        updated_at,
+        created_at,
+        deleted_at
+      FROM texts
+      WHERE
+        id = ?
+        AND deleted_at IS NULL
+    `;
+
+  return await env.DB
+    .prepare(query)
+    .bind(id)
+    .first();
+}
+
+
+async function getPublicTextById(env, id) {
+
+  return await env.DB
+    .prepare(`
+      SELECT
+        t.id,
+        t.title,
+        t.content,
+        t.folder,
+        t.visibility,
+        t.password,
+        t.updated_at,
+        t.created_at
+      FROM texts t
+      LEFT JOIN folders f
+        ON f.id = t.folder
+      WHERE
+        t.id = ?
+        AND t.deleted_at IS NULL
+        AND (
+          t.visibility = 'public'
+          OR t.visibility = 'semi_private'
+        )
+        AND (
+          t.folder IS NULL
+          OR t.folder = ''
+          OR f.id IS NOT NULL AND f.deleted_at IS NULL AND f.is_private = 0
+        )
+    `)
+    .bind(id)
+    .first();
+}
+
+
+async function getComments(env, textId = null) {
+
+  if (textId !== null) {
+
+    const result =
+      await env.DB
+        .prepare(`
+          SELECT
+            id,
+            text_id,
+            comment,
+            created_at,
+            author_name
+          FROM comments
+          WHERE text_id = ?
+          ORDER BY created_at ASC, id ASC
+        `)
+        .bind(textId)
+        .all();
+
+    return result.results || [];
   }
 
-  if (text.visibility === "private") {
+
+  const result =
+    await env.DB
+      .prepare(`
+        SELECT
+          c.id,
+          c.text_id,
+          c.comment,
+          c.created_at,
+          c.author_name,
+          t.title
+        FROM comments c
+        LEFT JOIN texts t
+          ON t.id = c.text_id
+        ORDER BY c.created_at DESC, c.id DESC
+      `)
+      .all();
+
+  return result.results || [];
+}
+
+
+async function getLikes(env, textId) {
+
+  const result =
+    await env.DB
+      .prepare(`
+        SELECT COUNT(*) AS count
+        FROM text_likes
+        WHERE text_id = ?
+      `)
+      .bind(textId)
+      .first();
+
+  return Number(result?.count || 0);
+}
+
+
+async function hasLiked(env, textId, visitorKey) {
+
+  if (!visitorKey) {
     return false;
   }
 
-  const expected =
-    text.password ||
-    env.SEMI_PRIVATE_PASSWORD;
+  const result =
+    await env.DB
+      .prepare(`
+        SELECT id
+        FROM text_likes
+        WHERE
+          text_id = ?
+          AND visitor_key = ?
+        LIMIT 1
+      `)
+      .bind(textId, visitorKey)
+      .first();
 
-  return Boolean(
-    expected &&
-    password === expected
-  );
+  return Boolean(result);
 }
 
 
-// ─────────────────────────────────────
-// Worker
-// ─────────────────────────────────────
+async function getImages(env, textId) {
+
+  const result =
+    await env.DB
+      .prepare(`
+        SELECT
+          id,
+          text_id,
+          r2_key,
+          filename,
+          created_at
+        FROM text_images
+        WHERE text_id = ?
+        ORDER BY created_at ASC
+      `)
+      .bind(textId)
+      .all();
+
+  return (result.results || []).map(image => ({
+    ...image,
+
+    // Für bestehende Einträge wird r2_key als URL
+    // verwendet. Neue Cloudinary-Bilder speichern
+    // ihre URL dort ebenfalls.
+    url: image.r2_key
+  }));
+}
+
+
+async function getSetting(env, key) {
+
+  const result =
+    await env.DB
+      .prepare(`
+        SELECT value
+        FROM settings
+        WHERE key = ?
+      `)
+      .bind(key)
+      .first();
+
+  return result?.value || "";
+}
+
+
+async function setSetting(env, key, value) {
+
+  await env.DB
+    .prepare(`
+      INSERT INTO settings
+      (
+        key,
+        value
+      )
+      VALUES (?, ?)
+
+      ON CONFLICT(key)
+      DO UPDATE SET
+        value = excluded.value
+    `)
+    .bind(key, value)
+    .run();
+}
+
+
+async function getNewCommentCount(env) {
+
+  const lastSeen =
+    await getSetting(
+      env,
+      "comments_last_seen"
+    );
+
+  if (!lastSeen) {
+
+    const result =
+      await env.DB
+        .prepare(`
+          SELECT COUNT(*) AS count
+          FROM comments
+        `)
+        .first();
+
+    return Number(result?.count || 0);
+  }
+
+
+  const result =
+    await env.DB
+      .prepare(`
+        SELECT COUNT(*) AS count
+        FROM comments
+        WHERE created_at > ?
+      `)
+      .bind(lastSeen)
+      .first();
+
+  return Number(result?.count || 0);
+}
+
+
+// ─────────────────────────────────────────────────────────────────────
+// 08. CLOUDINARY
+// ─────────────────────────────────────────────────────────────────────
+
+async function sha1Hex(text) {
+
+  const data =
+    new TextEncoder().encode(text);
+
+  const hash =
+    await crypto.subtle.digest(
+      "SHA-1",
+      data
+    );
+
+  return [...new Uint8Array(hash)]
+    .map(byte =>
+      byte.toString(16).padStart(2, "0")
+    )
+    .join("");
+}
+
+
+async function uploadToCloudinary(
+  file,
+  env
+) {
+
+  if (!file || !file.size) {
+    return null;
+  }
+
+
+  if (!env.CLOUDINARY_CLOUD_NAME) {
+    throw new Error(
+      "CLOUDINARY_CLOUD_NAME fehlt."
+    );
+  }
+
+
+  if (!env.CLOUDINARY_API_KEY) {
+    throw new Error(
+      "CLOUDINARY_API_KEY fehlt."
+    );
+  }
+
+
+  if (!env.CLOUDINARY_API_SECRET) {
+    throw new Error(
+      "CLOUDINARY_API_SECRET fehlt."
+    );
+  }
+
+
+  const timestamp =
+    Math.floor(Date.now() / 1000);
+
+
+  const folder =
+    "nib-archiv";
+
+
+  const paramsToSign =
+    `folder=${folder}&timestamp=${timestamp}`;
+
+
+  const signature =
+    await sha1Hex(
+      paramsToSign +
+      env.CLOUDINARY_API_SECRET
+    );
+
+
+  const uploadUrl =
+    `https://api.cloudinary.com/v1_1/${encodeURIComponent(
+      env.CLOUDINARY_CLOUD_NAME
+    )}/image/upload`;
+
+
+  const body =
+    new FormData();
+
+  body.append(
+    "file",
+    file,
+    file.name || "image"
+  );
+
+  body.append(
+    "api_key",
+    env.CLOUDINARY_API_KEY
+  );
+
+  body.append(
+    "timestamp",
+    String(timestamp)
+  );
+
+  body.append(
+    "signature",
+    signature
+  );
+
+  body.append(
+    "folder",
+    folder
+  );
+
+
+  const response =
+    await fetch(
+      uploadUrl,
+      {
+        method: "POST",
+        body
+      }
+    );
+
+
+  if (!response.ok) {
+
+    const errorText =
+      await response.text();
+
+    throw new Error(
+      `Cloudinary-Upload fehlgeschlagen: ${errorText}`
+    );
+  }
+
+
+  const result =
+    await response.json();
+
+
+  return {
+    url: result.secure_url,
+    public_id: result.public_id,
+    filename: file.name || "image"
+  };
+}
+
+
+// ─────────────────────────────────────────────────────────────────────
+// 09. SESSIONS / BESUCHER
+// ─────────────────────────────────────────────────────────────────────
+
+async function requireAdmin(
+  request,
+  env
+) {
+
+  const session =
+    getSession(request);
+
+  if (!session) {
+    return false;
+  }
+
+  const value =
+    await env.SESSIONS.get(session);
+
+  return value === "admin";
+}
+
+
+async function createAdminSession(env) {
+
+  const session =
+    randomId();
+
+  await env.SESSIONS.put(
+    session,
+    "admin",
+    {
+      expirationTtl:
+        60 * 60 * 24
+    }
+  );
+
+  return session;
+}
+
+
+function ensureVisitorKey(request) {
+
+  const existing =
+    getVisitorKey(request);
+
+  if (existing) {
+    return {
+      key: existing,
+      cookie: null
+    };
+  }
+
+  const key =
+    randomId();
+
+  return {
+    key,
+    cookie: visitorCookie(key)
+  };
+}
+
+
+// ─────────────────────────────────────────────────────────────────────
+// 10. WORKER / ROUTING
+// ─────────────────────────────────────────────────────────────────────
 
 export default {
 
@@ -3000,218 +3274,276 @@ export default {
     const url =
       new URL(request.url);
 
-    const pathname =
+    const path =
       url.pathname;
 
-    const admin =
-      await isAdmin(request, env);
+
+    // ═══════════════════════════════════════════════════════════════
+    // ADMIN-LOGIN / ADMIN-BEREICH
+    // ═══════════════════════════════════════════════════════════════
+
+    const isAdmin =
+      await requireAdmin(
+        request,
+        env
+      );
 
 
-    // ─────────────────────────────────
-    // Öffentliche Startseite
-    // ─────────────────────────────────
+    // ───────────────────────────────────────────────────────────────
+    // ADMIN-LOGIN
+    // ───────────────────────────────────────────────────────────────
 
     if (
-      request.method === "GET" &&
-      pathname === "/"
+      path === "/admin" ||
+      path === "/admin/"
     ) {
 
+      if (request.method === "POST") {
+
+        const form =
+          await request.formData();
+
+        const action =
+          String(
+            form.get("action") || ""
+          );
+
+
+        if (action === "login") {
+
+          const password =
+            String(
+              form.get("password") || ""
+            );
+
+
+          if (
+            password ===
+            env.ADMIN_PASSWORD
+          ) {
+
+            const session =
+              await createAdminSession(env);
+
+
+            return redirect(
+              "/admin",
+              {
+                "Set-Cookie":
+                  adminCookie(session)
+              }
+            );
+          }
+
+
+          return htmlResponse(
+            loginPage(
+              "Falsches Passwort."
+            ),
+            401
+          );
+        }
+
+
+        if (
+          action === "logout" &&
+          isAdmin
+        ) {
+
+          const session =
+            getSession(request);
+
+          if (session) {
+            await env.SESSIONS.delete(
+              session
+            );
+          }
+
+          return redirect(
+            "/admin",
+            {
+              "Set-Cookie":
+                clearAdminCookie()
+            }
+          );
+        }
+
+      }
+
+
+      if (!isAdmin) {
+        return htmlResponse(
+          loginPage()
+        );
+      }
+
+
+      const commentCount =
+        await getNewCommentCount(env);
+
+
       return htmlResponse(
-        await publicHomePage(
-          env,
-          request
+        adminDashboardPage(
+          "",
+          commentCount
         )
       );
     }
 
 
-    // ─────────────────────────────────
-    // Admin Login
-    // ─────────────────────────────────
+    // ───────────────────────────────────────────────────────────────
+    // ADMIN: TEXTE
+    // ───────────────────────────────────────────────────────────────
 
     if (
-      pathname === "/admin" &&
-      request.method === "GET" &&
-      !admin
+      path === "/admin/texts" &&
+      isAdmin
     ) {
 
+      let message = "";
+
+
+      if (request.method === "POST") {
+
+        const form =
+          await request.formData();
+
+        const action =
+          String(
+            form.get("action") || ""
+          );
+
+
+        if (action === "delete_text") {
+
+          const id =
+            String(
+              form.get("id") || ""
+            );
+
+
+          if (id) {
+
+            const now =
+              new Date().toISOString();
+
+            await env.DB
+              .prepare(`
+                UPDATE texts
+                SET
+                  deleted_at = ?,
+                  updated_at = ?
+                WHERE
+                  id = ?
+                  AND deleted_at IS NULL
+              `)
+              .bind(
+                now,
+                now,
+                id
+              )
+              .run();
+
+            message =
+              "Text in den Papierkorb verschoben.";
+          }
+        }
+
+      }
+
+
+      const texts =
+        await getTexts(env);
+
+      const folders =
+        await getFolders(env);
+
+      const commentCount =
+        await getNewCommentCount(env);
+
+
       return htmlResponse(
-        adminLoginPage()
+        adminTextsPage(
+          texts,
+          folders,
+          commentCount,
+          message
+        )
       );
     }
 
 
-    // ─────────────────────────────────
-    // Login verarbeiten
-    // ─────────────────────────────────
+    // ───────────────────────────────────────────────────────────────
+    // ADMIN: NEUER TEXT
+    // ───────────────────────────────────────────────────────────────
 
     if (
-      pathname === "/admin" &&
-      request.method === "POST" &&
-      !admin
+      path === "/admin/text/new" &&
+      isAdmin
     ) {
 
-      const form =
-        await request.formData();
+      const folders =
+        await getFolders(env);
 
-      const action =
-        String(
-          form.get("action") || ""
-        );
-
-      if (action === "login") {
-
-        const password =
-          String(
-            form.get("password") || ""
-          );
-
-        if (
-          password === env.ADMIN_PASSWORD
-        ) {
-
-          const session =
-            crypto.randomUUID();
-
-          await env.SESSIONS.put(
-            session,
-            "admin",
-            {
-              expirationTtl:
-                60 * 60 * 24
-            }
-          );
-
-          return new Response(null, {
-            status: 302,
-            headers: {
-              Location: "/admin",
-              "Set-Cookie":
-                `nib_session=${session}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=86400`
-            }
-          });
-        }
-
-        return htmlResponse(
-          adminLoginPage(
-            "Falsches Passwort."
-          ),
-          401
-        );
-      }
-    }
+      const commentCount =
+        await getNewCommentCount(env);
 
 
-    // ─────────────────────────────────
-    // Admin-Bereich schützen
-    // ─────────────────────────────────
+      if (request.method === "POST") {
 
-    if (
-      pathname.startsWith("/admin") &&
-      !admin
-    ) {
+        const form =
+          await request.formData();
 
-      return new Response(null, {
-        status: 302,
-        headers: {
-          Location: "/admin"
-        }
-      });
-    }
-
-
-    // ─────────────────────────────────
-    // Admin POST-Aktionen
-    // ─────────────────────────────────
-
-    if (
-      admin &&
-      request.method === "POST"
-    ) {
-
-      const form =
-        await request.formData();
-
-      const action =
-        String(
-          form.get("action") || ""
-        );
-
-
-      // ───────────────────────────────
-      // Logout
-      // ───────────────────────────────
-
-      if (action === "logout") {
-
-        const session =
-          getSession(request);
-
-        if (session) {
-          await env.SESSIONS.delete(session);
-        }
-
-        return new Response(null, {
-          status: 302,
-          headers: {
-            Location: "/admin",
-            "Set-Cookie":
-              "nib_session=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0"
-          }
-        });
-      }
-
-
-      // ───────────────────────────────
-      // Text erstellen
-      // ───────────────────────────────
-
-      if (action === "create_text") {
 
         const title =
           String(
             form.get("title") || ""
           ).trim();
 
+
         const content =
           String(
             form.get("content") || ""
           );
+
 
         const folder =
           String(
             form.get("folder") || ""
           ).trim();
 
+
         const visibility =
           String(
-            form.get("visibility") || "private"
+            form.get("visibility") ||
+            "private"
           );
+
 
         const customPassword =
           String(
-            form.get("custom_password") || ""
-          );
+            form.get("custom_password") ||
+            ""
+          ).trim();
 
 
         if (!title) {
 
           return htmlResponse(
-            await adminNewTextPage(
-              env,
+            adminTextFormPage(
+              {
+                title,
+                content,
+                folder,
+                visibility,
+                password: customPassword
+              },
+              folders,
+              [],
+              commentCount,
               "Bitte einen Titel eingeben."
-            )
-          );
-        }
-
-
-        if (!content) {
-
-          return htmlResponse(
-            await adminNewTextPage(
-              env,
-              "Bitte einen Inhalt eingeben."
-            )
+            ),
+            400
           );
         }
 
@@ -3225,887 +3557,1151 @@ export default {
         ) {
 
           return htmlResponse(
-            await adminNewTextPage(
-              env,
+            adminTextFormPage(
+              {
+                title,
+                content,
+                folder,
+                visibility,
+                password: customPassword
+              },
+              folders,
+              [],
+              commentCount,
               "Ungültige Sichtbarkeit."
-            )
+            ),
+            400
           );
         }
-
-
-        const password =
-          visibility === "semi_private" &&
-          customPassword
-            ? customPassword
-            : null;
 
 
         const now =
           new Date().toISOString();
 
 
-        const insert =
-          await env.DB.prepare(`
-            INSERT INTO texts
-            (
+        const result =
+          await env.DB
+            .prepare(`
+              INSERT INTO texts
+              (
+                title,
+                content,
+                folder,
+                visibility,
+                password,
+                updated_at,
+                created_at,
+                deleted_at
+              )
+              VALUES (?, ?, ?, ?, ?, ?, ?, NULL)
+            `)
+            .bind(
               title,
               content,
               folder,
               visibility,
-              password,
-              updated_at,
-              created_at
+              customPassword || null,
+              now,
+              now
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-          `)
-          .bind(
-            title,
-            content,
-            folder || "Fragmente",
-            visibility,
-            password,
-            now,
-            now
-          )
-          .run();
+            .run();
 
 
         const textId =
-          insert.meta.last_row_id;
+          result.meta?.last_row_id;
 
 
-        // Bilder zu Cloudinary hochladen
+        if (textId) {
 
-        const imageFiles =
-          form.getAll("images");
+          const files =
+            form.getAll("images");
 
-        for (
-          const file of imageFiles
-        ) {
 
-          if (
-            !file ||
-            typeof file !== "object" ||
-            !file.size
-          ) {
-            continue;
-          }
+          for (const file of files) {
 
-          try {
+            if (
+              !(file instanceof File) ||
+              !file.size
+            ) {
+              continue;
+            }
 
-            const uploaded =
-              await cloudinaryUpload(
-                file,
-                env
+
+            try {
+
+              const uploaded =
+                await uploadToCloudinary(
+                  file,
+                  env
+                );
+
+
+              if (!uploaded) {
+                continue;
+              }
+
+
+              await env.DB
+                .prepare(`
+                  INSERT INTO text_images
+                  (
+                    id,
+                    text_id,
+                    r2_key,
+                    filename,
+                    created_at
+                  )
+                  VALUES (?, ?, ?, ?, ?)
+                `)
+                .bind(
+                  randomId(),
+                  textId,
+                  uploaded.url,
+                  uploaded.filename,
+                  now
+                )
+                .run();
+
+            } catch (error) {
+
+              console.error(
+                "Cloudinary Upload:",
+                error
               );
 
-            await env.DB.prepare(`
-              INSERT INTO text_images
-              (
-                id,
-                text_id,
-                r2_key,
-                filename,
-                created_at
-              )
-              VALUES (?, ?, ?, ?, ?)
-            `)
-            .bind(
-              crypto.randomUUID(),
-              textId,
-              uploaded.secure_url,
-              file.name || null,
-              now
-            )
-            .run();
+            }
 
-          } catch (error) {
-
-            return htmlResponse(
-              await adminTextsPage(
-                env,
-                `Text gespeichert, aber ein Bild konnte nicht hochgeladen werden: ${error.message}`
-              )
-            );
           }
+
         }
 
 
-        return new Response(null, {
-          status: 302,
-          headers: {
-            Location:
-              `/admin/text/${encodeURIComponent(textId)}`
-          }
-        });
+        return redirect(
+          `/admin/text/${encodeURIComponent(textId)}`
+        );
       }
 
 
-      // ───────────────────────────────
-      // Text bearbeiten
-      // ───────────────────────────────
-
-      if (action === "update_text") {
-
-        const id =
-          String(
-            form.get("id") || ""
-          );
-
-        const title =
-          String(
-            form.get("title") || ""
-          ).trim();
-
-        const content =
-          String(
-            form.get("content") || ""
-          );
-
-        const folder =
-          String(
-            form.get("folder") || ""
-          ).trim();
-
-        const visibility =
-          String(
-            form.get("visibility") || "private"
-          );
-
-        const customPassword =
-          String(
-            form.get("custom_password") || ""
-          );
-
-        const removePassword =
-          form.get("remove_password") === "1";
-
-
-        const oldText =
-          await getText(env, id);
-
-
-        if (!oldText) {
-
-          return htmlResponse(
-            await adminTextsPage(
-              env,
-              "Text nicht gefunden."
-            )
-          );
-        }
-
-
-        let password =
-          oldText.password;
-
-
-        if (
-          visibility !== "semi_private"
-        ) {
-
-          password = null;
-
-        } else if (removePassword) {
-
-          password = null;
-
-        } else if (customPassword) {
-
-          password = customPassword;
-
-        }
-
-
-        const now =
-          new Date().toISOString();
-
-
-        await env.DB.prepare(`
-          UPDATE texts
-          SET
-            title = ?,
-            content = ?,
-            folder = ?,
-            visibility = ?,
-            password = ?,
-            updated_at = ?
-          WHERE
-            id = ?
-            AND deleted_at IS NULL
-        `)
-        .bind(
-          title,
-          content,
-          folder || "Fragmente",
-          visibility,
-          password,
-          now,
-          id
+      return htmlResponse(
+        adminTextFormPage(
+          null,
+          folders,
+          [],
+          commentCount
         )
-        .run();
-
-
-        const imageFiles =
-          form.getAll("images");
-
-        for (
-          const file of imageFiles
-        ) {
-
-          if (
-            !file ||
-            typeof file !== "object" ||
-            !file.size
-          ) {
-            continue;
-          }
-
-          try {
-
-            const uploaded =
-              await cloudinaryUpload(
-                file,
-                env
-              );
-
-            await env.DB.prepare(`
-              INSERT INTO text_images
-              (
-                id,
-                text_id,
-                r2_key,
-                filename,
-                created_at
-              )
-              VALUES (?, ?, ?, ?, ?)
-            `)
-            .bind(
-              crypto.randomUUID(),
-              id,
-              uploaded.secure_url,
-              file.name || null,
-              now
-            )
-            .run();
-
-          } catch (error) {
-
-            return htmlResponse(
-              await adminEditTextPage(
-                env,
-                id,
-                `Text gespeichert, aber ein Bild konnte nicht hochgeladen werden: ${error.message}`
-              )
-            );
-          }
-        }
-
-
-        return new Response(null, {
-          status: 302,
-          headers: {
-            Location:
-              `/admin/text/${encodeURIComponent(id)}?saved=1`
-          }
-        });
-      }
-
-
-      // ───────────────────────────────
-      // Bild löschen
-      // ───────────────────────────────
-
-      if (action === "delete_image") {
-
-        const id =
-          String(
-            form.get("id") || ""
-          );
-
-        await env.DB.prepare(`
-          DELETE FROM text_images
-          WHERE id = ?
-        `)
-        .bind(id)
-        .run();
-
-        return new Response(null, {
-          status: 302,
-          headers: {
-            Location:
-              request.headers.get("Referer") ||
-              "/admin/texts"
-          }
-        });
-      }
-
-
-      // ───────────────────────────────
-      // Text löschen
-      // ───────────────────────────────
-
-      if (action === "delete_text") {
-
-        const id =
-          String(
-            form.get("id") || ""
-          );
-
-        const now =
-          new Date().toISOString();
-
-        await env.DB.prepare(`
-          UPDATE texts
-          SET
-            deleted_at = ?,
-            updated_at = ?
-          WHERE
-            id = ?
-            AND deleted_at IS NULL
-        `)
-        .bind(
-          now,
-          now,
-          id
-        )
-        .run();
-
-        return new Response(null, {
-          status: 302,
-          headers: {
-            Location: "/admin/texts"
-          }
-        });
-      }
-
-
-      // ───────────────────────────────
-      // Text wiederherstellen
-      // ───────────────────────────────
-
-      if (action === "restore_text") {
-
-        const id =
-          String(
-            form.get("id") || ""
-          );
-
-        await env.DB.prepare(`
-          UPDATE texts
-          SET deleted_at = NULL
-          WHERE id = ?
-        `)
-        .bind(id)
-        .run();
-
-        return new Response(null, {
-          status: 302,
-          headers: {
-            Location: "/admin/trash"
-          }
-        });
-      }
-
-
-      // ───────────────────────────────
-      // Text endgültig löschen
-      // ───────────────────────────────
-
-      if (action === "destroy_text") {
-
-        const id =
-          String(
-            form.get("id") || ""
-          );
-
-        await env.DB.prepare(`
-          DELETE FROM texts
-          WHERE id = ?
-        `)
-        .bind(id)
-        .run();
-
-        return new Response(null, {
-          status: 302,
-          headers: {
-            Location: "/admin/trash"
-          }
-        });
-      }
-
-
-      // ───────────────────────────────
-      // Ordner erstellen
-      // ───────────────────────────────
-
-      if (action === "create_folder") {
-
-        const name =
-          String(
-            form.get("name") || ""
-          ).trim();
-
-        if (name) {
-
-          const now =
-            new Date().toISOString();
-
-          await env.DB.prepare(`
-            INSERT INTO folders
-            (
-              id,
-              name,
-              is_private,
-              created_at,
-              updated_at,
-              deleted_at
-            )
-            VALUES (?, ?, 0, ?, ?, NULL)
-          `)
-          .bind(
-            crypto.randomUUID(),
-            name,
-            now,
-            now
-          )
-          .run();
-        }
-
-        return new Response(null, {
-          status: 302,
-          headers: {
-            Location: "/admin/folders"
-          }
-        });
-      }
-
-
-      // ───────────────────────────────
-      // Ordner umbenennen
-      // ───────────────────────────────
-
-      if (action === "rename_folder") {
-
-        const id =
-          String(
-            form.get("id") || ""
-          );
-
-        const name =
-          String(
-            form.get("name") || ""
-          ).trim();
-
-        if (id && name) {
-
-          await env.DB.prepare(`
-            UPDATE folders
-            SET
-              name = ?,
-              updated_at = ?
-            WHERE
-              id = ?
-              AND deleted_at IS NULL
-          `)
-          .bind(
-            name,
-            new Date().toISOString(),
-            id
-          )
-          .run();
-        }
-
-        return new Response(null, {
-          status: 302,
-          headers: {
-            Location: "/admin/folders"
-          }
-        });
-      }
-
-
-      // ───────────────────────────────
-      // Ordner Sichtbarkeit
-      // ───────────────────────────────
-
-      if (action === "toggle_folder") {
-
-        const id =
-          String(
-            form.get("id") || ""
-          );
-
-        await env.DB.prepare(`
-          UPDATE folders
-          SET
-            is_private =
-              CASE
-                WHEN is_private = 1
-                THEN 0
-                ELSE 1
-              END,
-            updated_at = ?
-          WHERE
-            id = ?
-            AND deleted_at IS NULL
-        `)
-        .bind(
-          new Date().toISOString(),
-          id
-        )
-        .run();
-
-        return new Response(null, {
-          status: 302,
-          headers: {
-            Location: "/admin/folders"
-          }
-        });
-      }
-
-
-      // ───────────────────────────────
-      // Ordner löschen
-      // ───────────────────────────────
-
-      if (action === "delete_folder") {
-
-        const id =
-          String(
-            form.get("id") || ""
-          );
-
-        const now =
-          new Date().toISOString();
-
-        await env.DB.prepare(`
-          UPDATE folders
-          SET
-            deleted_at = ?,
-            updated_at = ?
-          WHERE
-            id = ?
-            AND deleted_at IS NULL
-        `)
-        .bind(
-          now,
-          now,
-          id
-        )
-        .run();
-
-        return new Response(null, {
-          status: 302,
-          headers: {
-            Location: "/admin/folders"
-          }
-        });
-      }
-
-
-      // ───────────────────────────────
-      // Kommentar löschen
-      // ───────────────────────────────
-
-      if (action === "delete_comment") {
-
-        const id =
-          String(
-            form.get("id") || ""
-          );
-
-        await env.DB.prepare(`
-          DELETE FROM comments
-          WHERE id = ?
-        `)
-        .bind(id)
-        .run();
-
-        return new Response(null, {
-          status: 302,
-          headers: {
-            Location: "/admin/comments"
-          }
-        });
-      }
-    }
-
-
-    // ─────────────────────────────────
-    // Admin Unterseiten
-    // ─────────────────────────────────
-
-    if (
-      admin &&
-      pathname === "/admin"
-    ) {
-
-      return htmlResponse(
-        await adminDashboardPage(env)
-      );
-    }
-
-    if (
-      admin &&
-      pathname === "/admin/texts"
-    ) {
-
-      return htmlResponse(
-        await adminTextsPage(env)
-      );
-    }
-
-    if (
-      admin &&
-      pathname === "/admin/text/new"
-    ) {
-
-      return htmlResponse(
-        await adminNewTextPage(env)
-      );
-    }
-
-    if (
-      admin &&
-      pathname === "/admin/folders"
-    ) {
-
-      return htmlResponse(
-        await adminFoldersPage(env)
-      );
-    }
-
-    if (
-      admin &&
-      pathname === "/admin/comments"
-    ) {
-
-      return htmlResponse(
-        await adminCommentsPage(env)
-      );
-    }
-
-    if (
-      admin &&
-      pathname === "/admin/trash"
-    ) {
-
-      return htmlResponse(
-        await adminTrashPage(env)
-      );
-    }
-
-    if (
-      admin &&
-      pathname === "/admin/settings"
-    ) {
-
-      return htmlResponse(
-        await adminSettingsPage(env)
       );
     }
 
 
-    // ─────────────────────────────────
-    // Admin einzelner Text
-    // ─────────────────────────────────
+    // ───────────────────────────────────────────────────────────────
+    // ADMIN: TEXT ÖFFNEN / BEARBEITEN
+    // ───────────────────────────────────────────────────────────────
 
     const adminTextMatch =
-      pathname.match(
-        /^\/admin\/text\/([^/]+)$/
+      path.match(
+        /^\/admin\/text\/(\d+)$/
       );
 
+
     if (
-      admin &&
-      adminTextMatch
+      adminTextMatch &&
+      isAdmin
     ) {
 
       const id =
-        decodeURIComponent(
-          adminTextMatch[1]
+        adminTextMatch[1];
+
+
+      let text =
+        await getTextById(
+          env,
+          id,
+          false
         );
 
-      const text =
-        await getText(env, id);
 
       if (!text) {
 
         return htmlResponse(
-          await adminTextsPage(
-            env,
+          adminTextsPage(
+            await getTexts(env),
+            await getFolders(env),
+            await getNewCommentCount(env),
             "Text nicht gefunden."
           ),
           404
         );
       }
 
-      const saved =
-        url.searchParams.get("saved") === "1";
+
+      const folders =
+        await getFolders(env);
+
+      const commentCount =
+        await getNewCommentCount(env);
+
+
+      if (request.method === "POST") {
+
+        const form =
+          await request.formData();
+
+
+        const action =
+          String(
+            form.get("action") || ""
+          );
+
+
+        if (action === "update_text") {
+
+          const title =
+            String(
+              form.get("title") || ""
+            ).trim();
+
+
+          const content =
+            String(
+              form.get("content") || ""
+            );
+
+
+          const folder =
+            String(
+              form.get("folder") || ""
+            ).trim();
+
+
+          const visibility =
+            String(
+              form.get("visibility") ||
+              "private"
+            );
+
+
+          const customPassword =
+            String(
+              form.get("custom_password") ||
+              ""
+            ).trim();
+
+
+          if (!title) {
+
+            return htmlResponse(
+              adminTextFormPage(
+                {
+                  ...text,
+                  title,
+                  content,
+                  folder,
+                  visibility,
+                  password: customPassword
+                },
+                folders,
+                await getImages(env, id),
+                commentCount,
+                "Bitte einen Titel eingeben."
+              ),
+              400
+            );
+          }
+
+
+          if (
+            ![
+              "public",
+              "semi_private",
+              "private"
+            ].includes(visibility)
+          ) {
+
+            return htmlResponse(
+              adminTextFormPage(
+                {
+                  ...text,
+                  title,
+                  content,
+                  folder,
+                  visibility,
+                  password: customPassword
+                },
+                folders,
+                await getImages(env, id),
+                commentCount,
+                "Ungültige Sichtbarkeit."
+              ),
+              400
+            );
+          }
+
+
+          const now =
+            new Date().toISOString();
+
+
+          await env.DB
+            .prepare(`
+              UPDATE texts
+              SET
+                title = ?,
+                content = ?,
+                folder = ?,
+                visibility = ?,
+                password = ?,
+                updated_at = ?
+              WHERE
+                id = ?
+                AND deleted_at IS NULL
+            `)
+            .bind(
+              title,
+              content,
+              folder,
+              visibility,
+              customPassword || null,
+              now,
+              id
+            )
+            .run();
+
+
+          const files =
+            form.getAll("images");
+
+
+          for (const file of files) {
+
+            if (
+              !(file instanceof File) ||
+              !file.size
+            ) {
+              continue;
+            }
+
+
+            try {
+
+              const uploaded =
+                await uploadToCloudinary(
+                  file,
+                  env
+                );
+
+
+              if (!uploaded) {
+                continue;
+              }
+
+
+              await env.DB
+                .prepare(`
+                  INSERT INTO text_images
+                  (
+                    id,
+                    text_id,
+                    r2_key,
+                    filename,
+                    created_at
+                  )
+                  VALUES (?, ?, ?, ?, ?)
+                `)
+                .bind(
+                  randomId(),
+                  id,
+                  uploaded.url,
+                  uploaded.filename,
+                  now
+                )
+                .run();
+
+            } catch (error) {
+
+              console.error(
+                "Cloudinary Upload:",
+                error
+              );
+
+            }
+
+          }
+
+
+          text =
+            await getTextById(
+              env,
+              id,
+              false
+            );
+
+
+          return htmlResponse(
+            adminTextFormPage(
+              text,
+              folders,
+              await getImages(env, id),
+              commentCount,
+              "Text gespeichert."
+            )
+          );
+        }
+
+      }
+
 
       return htmlResponse(
-        await adminEditTextPage(
-          env,
-          id,
-          saved
-            ? "Änderungen gespeichert."
-            : ""
+        adminTextFormPage(
+          text,
+          folders,
+          await getImages(env, id),
+          commentCount
         )
       );
     }
 
 
-    // ─────────────────────────────────
-    // Öffentlicher Text
-    // ─────────────────────────────────
-
-    const publicTextMatch =
-      pathname.match(
-        /^\/text\/([^/]+)$/
-      );
+    // ───────────────────────────────────────────────────────────────
+    // ADMIN: ORDNER
+    // ───────────────────────────────────────────────────────────────
 
     if (
-      request.method === "GET" &&
-      publicTextMatch
+      path === "/admin/folders" &&
+      isAdmin
     ) {
 
-      const id =
-        decodeURIComponent(
-          publicTextMatch[1]
+      let message = "";
+
+
+      if (request.method === "POST") {
+
+        const form =
+          await request.formData();
+
+
+        const action =
+          String(
+            form.get("action") || ""
+          );
+
+
+        if (action === "create_folder") {
+
+          const name =
+            String(
+              form.get("name") || ""
+            ).trim();
+
+
+          if (name) {
+
+            const now =
+              new Date().toISOString();
+
+
+            await env.DB
+              .prepare(`
+                INSERT INTO folders
+                (
+                  id,
+                  name,
+                  is_private,
+                  created_at,
+                  updated_at,
+                  deleted_at
+                )
+                VALUES (?, ?, 0, ?, ?, NULL)
+              `)
+              .bind(
+                randomId(),
+                name,
+                now,
+                now
+              )
+              .run();
+
+
+            message =
+              "Ordner erstellt.";
+
+          }
+
+        }
+
+
+        if (action === "rename_folder") {
+
+          const id =
+            String(
+              form.get("id") || ""
+            );
+
+
+          const name =
+            String(
+              form.get("name") || ""
+            ).trim();
+
+
+          if (id && name) {
+
+            await env.DB
+              .prepare(`
+                UPDATE folders
+                SET
+                  name = ?,
+                  updated_at = ?
+                WHERE
+                  id = ?
+                  AND deleted_at IS NULL
+              `)
+              .bind(
+                name,
+                new Date().toISOString(),
+                id
+              )
+              .run();
+
+
+            message =
+              "Ordner umbenannt.";
+          }
+
+        }
+
+
+        if (action === "toggle_folder") {
+
+          const id =
+            String(
+              form.get("id") || ""
+            );
+
+
+          if (id) {
+
+            await env.DB
+              .prepare(`
+                UPDATE folders
+                SET
+                  is_private =
+                    CASE
+                      WHEN is_private = 1
+                      THEN 0
+                      ELSE 1
+                    END,
+                  updated_at = ?
+                WHERE
+                  id = ?
+                  AND deleted_at IS NULL
+              `)
+              .bind(
+                new Date().toISOString(),
+                id
+              )
+              .run();
+
+
+            message =
+              "Sichtbarkeit des Ordners geändert.";
+          }
+
+        }
+
+
+        if (action === "delete_folder") {
+
+          const id =
+            String(
+              form.get("id") || ""
+            );
+
+
+          if (id) {
+
+            const now =
+              new Date().toISOString();
+
+
+            await env.DB
+              .prepare(`
+                UPDATE folders
+                SET
+                  deleted_at = ?,
+                  updated_at = ?
+                WHERE
+                  id = ?
+                  AND deleted_at IS NULL
+              `)
+              .bind(
+                now,
+                now,
+                id
+              )
+              .run();
+
+
+            message =
+              "Ordner in den Papierkorb verschoben.";
+          }
+
+        }
+
+      }
+
+
+      return htmlResponse(
+        adminFoldersPage(
+          await getFolders(env),
+          await getNewCommentCount(env),
+          message
+        )
+      );
+    }
+
+
+    // ───────────────────────────────────────────────────────────────
+    // ADMIN: KOMMENTARE
+    // ───────────────────────────────────────────────────────────────
+
+    if (
+      path === "/admin/comments" &&
+      isAdmin
+    ) {
+
+      let message = "";
+
+
+      if (request.method === "POST") {
+
+        const form =
+          await request.formData();
+
+
+        const action =
+          String(
+            form.get("action") || ""
+          );
+
+
+        if (action === "delete_comment") {
+
+          const id =
+            String(
+              form.get("id") || ""
+            );
+
+
+          if (id) {
+
+            await env.DB
+              .prepare(`
+                DELETE FROM comments
+                WHERE id = ?
+              `)
+              .bind(id)
+              .run();
+
+
+            message =
+              "Kommentar gelöscht.";
+          }
+
+        }
+
+
+        await setSetting(
+          env,
+          "comments_last_seen",
+          new Date().toISOString()
         );
 
+      }
+
+
+      const comments =
+        await getComments(env);
+
+
+      await setSetting(
+        env,
+        "comments_last_seen",
+        new Date().toISOString()
+      );
+
+
+      return htmlResponse(
+        adminCommentsPage(
+          comments,
+          0,
+          message
+        )
+      );
+    }
+
+
+    // ───────────────────────────────────────────────────────────────
+    // ADMIN: PAPIERKORB
+    // ───────────────────────────────────────────────────────────────
+
+    if (
+      path === "/admin/trash" &&
+      isAdmin
+    ) {
+
+      let message = "";
+
+
+      if (request.method === "POST") {
+
+        const form =
+          await request.formData();
+
+
+        const action =
+          String(
+            form.get("action") || ""
+          );
+
+
+        const id =
+          String(
+            form.get("id") || ""
+          );
+
+
+        if (
+          id &&
+          action === "restore_text"
+        ) {
+
+          await env.DB
+            .prepare(`
+              UPDATE texts
+              SET
+                deleted_at = NULL,
+                updated_at = ?
+              WHERE id = ?
+            `)
+            .bind(
+              new Date().toISOString(),
+              id
+            )
+            .run();
+
+
+          message =
+            "Text wiederhergestellt.";
+        }
+
+
+        if (
+          id &&
+          action === "permanent_delete_text"
+        ) {
+
+          await env.DB
+            .prepare(`
+              DELETE FROM text_images
+              WHERE text_id = ?
+            `)
+            .bind(id)
+            .run();
+
+
+          await env.DB
+            .prepare(`
+              DELETE FROM comments
+              WHERE text_id = ?
+            `)
+            .bind(id)
+            .run();
+
+
+          await env.DB
+            .prepare(`
+              DELETE FROM text_likes
+              WHERE text_id = ?
+            `)
+            .bind(id)
+            .run();
+
+
+          await env.DB
+            .prepare(`
+              DELETE FROM texts
+              WHERE id = ?
+            `)
+            .bind(id)
+            .run();
+
+
+          message =
+            "Text endgültig gelöscht.";
+        }
+
+      }
+
+
+      return htmlResponse(
+        adminTrashPage(
+          await getTexts(env, true)
+            .then(
+              items =>
+                items.filter(
+                  item => item.deleted_at
+                )
+            ),
+          await getFolders(env),
+          await getNewCommentCount(env),
+          message
+        )
+      );
+    }
+
+
+    // ───────────────────────────────────────────────────────────────
+    // ADMIN: PASSWÖRTER
+    // ───────────────────────────────────────────────────────────────
+
+    if (
+      path === "/admin/passwords" &&
+      isAdmin
+    ) {
+
+      return htmlResponse(
+        adminPasswordsPage(
+          await getTexts(env),
+          await getNewCommentCount(env)
+        )
+      );
+    }
+
+
+    // ───────────────────────────────────────────────────────────────
+    // ADMIN: EINSTELLUNGEN
+    // ───────────────────────────────────────────────────────────────
+
+    if (
+      path === "/admin/settings" &&
+      isAdmin
+    ) {
+
+      return htmlResponse(
+        adminSettingsPage(
+          await getNewCommentCount(env)
+        )
+      );
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════
+    // ÖFFENTLICHE TEXTSEITE
+    // ═══════════════════════════════════════════════════════════════
+
+    const publicTextMatch =
+      path.match(
+        /^\/text\/(\d+)$/
+      );
+
+
+    if (publicTextMatch) {
+
+      const id =
+        publicTextMatch[1];
+
+
       const text =
-        await getText(env, id);
+        await getPublicTextById(
+          env,
+          id
+        );
+
 
       if (!text) {
 
         return htmlResponse(
-          await publicTextPage(
-            env,
-            request,
-            null
-          ),
-          404
-        );
-      }
-
-
-      // Private Texte niemals öffentlich zeigen
-
-      if (
-        text.visibility === "private"
-      ) {
-
-        return htmlResponse(`
-          ${page(`
-            <a
-              class="back"
-              href="/"
-            >
-              ← Zurück zum Archiv
+          page(`
+            <a class="back-link" href="/">
+              ← Zurück
             </a>
 
-            <div class="card">
-              Dieser Text ist privat.
-            </div>
-          `, "Privater Text")}
-        `, 403);
+            <h1 class="section-title">
+              Text nicht gefunden
+            </h1>
+
+            <p class="muted">
+              Dieser Text existiert nicht oder ist nicht öffentlich.
+            </p>
+          `, "Nicht gefunden")
+        , 404);
       }
 
 
-      // Halbprivat
-
+      // Halbprivate Texte benötigen Passwort.
       if (
         text.visibility === "semi_private"
       ) {
 
-        return htmlResponse(
-          page(`
+        if (request.method === "POST") {
 
-            <a
-              class="back"
-              href="/"
-            >
-              ← Zurück zum Archiv
-            </a>
+          const form =
+            await request.formData();
 
-            <header>
 
-              <p class="subtitle">
-                Geschützter Text
-              </p>
+          const action =
+            String(
+              form.get("action") || ""
+            );
 
-              <h1 class="logo">
-                ${esc(text.title)}
-              </h1>
 
-            </header>
+          if (
+            action === "unlock_text"
+          ) {
 
-            <div class="card">
+            const password =
+              String(
+                form.get("password") || ""
+              );
 
-              <p>
-                Dieser Text ist halbprivat.
-                Bitte Passwort eingeben.
-              </p>
 
-              <form method="POST">
+            const expectedPassword =
+              text.password ||
+              env.SEMI_PRIVATE_PASSWORD;
 
-                <input
-                  type="hidden"
-                  name="action"
-                  value="unlock_text"
-                >
 
-                <input
-                  type="hidden"
-                  name="text_id"
-                  value="${esc(text.id)}"
-                >
+            if (
+              password ===
+              expectedPassword
+            ) {
 
-                <label>
-                  Passwort
+              const unlocked =
+                new Headers();
 
-                  <input
-                    type="password"
-                    name="password"
-                    required
-                    autofocus
-                  >
-                </label>
+              unlocked.append(
+                "Set-Cookie",
+                [
+                  `nib_unlock_${id}=1`,
+                  "HttpOnly",
+                  "Secure",
+                  "SameSite=Lax",
+                  "Path=/",
+                  "Max-Age=86400"
+                ].join("; ")
+              );
 
-                <button type="submit">
-                  Öffnen
-                </button>
 
-              </form>
+              const visitor =
+                ensureVisitorKey(request);
 
-            </div>
 
-          `, text.title)
-        );
+              if (visitor.cookie) {
+                unlocked.append(
+                  "Set-Cookie",
+                  visitor.cookie
+                );
+              }
+
+
+              const comments =
+                await getComments(
+                  env,
+                  id
+                );
+
+
+              const images =
+                await getImages(
+                  env,
+                  id
+                );
+
+
+              const likes =
+                await getLikes(
+                  env,
+                  id
+                );
+
+
+              const liked =
+                await hasLiked(
+                  env,
+                  id,
+                  visitor.key
+                );
+
+
+              const folders =
+                await getFolders(env);
+
+
+              const folder =
+                folders.find(
+                  item =>
+                    String(item.id) ===
+                    String(text.folder)
+                );
+
+
+              const response =
+                htmlResponse(
+                  publicTextPage(
+                    text,
+                    folder,
+                    images,
+                    comments,
+                    likes,
+                    liked,
+                    visitor.key
+                  )
+                );
+
+
+              response.headers.append(
+                "Set-Cookie",
+                unlocked.get(
+                  "Set-Cookie"
+                )
+              );
+
+
+              if (visitor.cookie) {
+                response.headers.append(
+                  "Set-Cookie",
+                  visitor.cookie
+                );
+              }
+
+
+              return response;
+            }
+
+
+            return htmlResponse(
+              publicPasswordPage(
+                text,
+                "Falsches Passwort."
+              ),
+              401
+            );
+          }
+
+        }
+
+
+        const cookies =
+          request.headers.get("Cookie") || "";
+
+
+        const unlocked =
+          new RegExp(
+            `(?:^|;\\s*)nib_unlock_${id}=1(?:;|$)`
+          ).test(cookies);
+
+
+        if (!unlocked) {
+
+          return htmlResponse(
+            publicPasswordPage(text)
+          );
+        }
+
       }
 
 
-      return htmlResponse(
-        await publicTextPage(
+      // ─────────────────────────────────────────────────────────────
+      // Öffentlicher Text
+      // ─────────────────────────────────────────────────────────────
+
+      const visitor =
+        ensureVisitorKey(request);
+
+
+      const comments =
+        await getComments(
           env,
-          request,
-          text
-        )
-      );
+          id
+        );
+
+
+      const images =
+        await getImages(
+          env,
+          id
+        );
+
+
+      const likes =
+        await getLikes(
+          env,
+          id
+        );
+
+
+      const liked =
+        await hasLiked(
+          env,
+          id,
+          visitor.key
+        );
+
+
+      const folders =
+        await getFolders(env);
+
+
+      const folder =
+        folders.find(
+          item =>
+            String(item.id) ===
+            String(text.folder)
+        );
+
+
+      const response =
+        htmlResponse(
+          publicTextPage(
+            text,
+            folder,
+            images,
+            comments,
+            likes,
+            liked,
+            visitor.key
+          )
+        );
+
+
+      if (visitor.cookie) {
+
+        response.headers.append(
+          "Set-Cookie",
+          visitor.cookie
+        );
+
+      }
+
+
+      return response;
     }
 
 
-    // ─────────────────────────────────
-    // Öffentliche POST-Aktionen
-    // ─────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════
+    // ÖFFENTLICHE POST-AKTIONEN
+    // ═══════════════════════════════════════════════════════════════
 
     if (
-      request.method === "POST"
+      request.method === "POST" &&
+      (
+        path === "/like" ||
+        path === "/comment"
+      )
     ) {
 
       const form =
         await request.formData();
+
 
       const action =
         String(
@@ -4113,375 +4709,227 @@ export default {
         );
 
 
-      // ───────────────────────────────
-      // Halbprivaten Text öffnen
-      // ───────────────────────────────
-
-      if (
-        action === "unlock_text"
-      ) {
-
-        const id =
-          String(
-            form.get("text_id") || ""
-          );
-
-        const password =
-          String(
-            form.get("password") || ""
-          );
-
-        const text =
-          await getText(env, id);
+      const id =
+        String(
+          form.get("id") || ""
+        );
 
 
-        if (!text) {
-
-          return htmlResponse(
-            await publicTextPage(
-              env,
-              request,
-              null
-            ),
-            404
-          );
-        }
+      const text =
+        await getPublicTextById(
+          env,
+          id
+        );
 
 
-        if (
-          text.visibility === "private"
-        ) {
-
-          return htmlResponse(
-            await publicTextPage(
-              env,
-              request,
-              null
-            ),
-            403
-          );
-        }
-
-
-        if (
-          text.visibility === "semi_private" &&
-          !textPasswordIsCorrect(
-            text,
-            password,
-            env
-          )
-        ) {
-
-          return htmlResponse(
-            page(`
-
-              <a
-                class="back"
-                href="/"
-              >
-                ← Zurück zum Archiv
-              </a>
-
-              <div class="card">
-
-                <p class="message error">
-                  Falsches Passwort.
-                </p>
-
-                <form method="POST">
-
-                  <input
-                    type="hidden"
-                    name="action"
-                    value="unlock_text"
-                  >
-
-                  <input
-                    type="hidden"
-                    name="text_id"
-                    value="${esc(text.id)}"
-                  >
-
-                  <label>
-                    Passwort
-
-                    <input
-                      type="password"
-                      name="password"
-                      required
-                      autofocus
-                    >
-                  </label>
-
-                  <button type="submit">
-                    Erneut versuchen
-                  </button>
-
-                </form>
-
-              </div>
-
-            `, text.title),
-            401
-          );
-        }
-
+      if (!text) {
 
         return htmlResponse(
-          await publicTextPage(
-            env,
-            request,
-            text
-          )
+          "Text nicht gefunden.",
+          404
         );
       }
 
 
-      // ───────────────────────────────
-      // Kommentar
-      // ───────────────────────────────
+      // ─────────────────────────────────────────────────────────────
+      // Like
+      // ─────────────────────────────────────────────────────────────
 
       if (
-        action === "comment"
+        action === "like" &&
+        path === "/like"
       ) {
 
-        const textId =
-          String(
-            form.get("text_id") || ""
+        const visitor =
+          ensureVisitorKey(request);
+
+
+        const alreadyLiked =
+          await hasLiked(
+            env,
+            id,
+            visitor.key
           );
+
+
+        if (alreadyLiked) {
+
+          await env.DB
+            .prepare(`
+              DELETE FROM text_likes
+              WHERE
+                text_id = ?
+                AND visitor_key = ?
+            `)
+            .bind(
+              id,
+              visitor.key
+            )
+            .run();
+
+        } else {
+
+          await env.DB
+            .prepare(`
+              INSERT OR IGNORE INTO text_likes
+              (
+                text_id,
+                visitor_key,
+                created_at
+              )
+              VALUES (?, ?, ?)
+            `)
+            .bind(
+              id,
+              visitor.key,
+              new Date().toISOString()
+            )
+            .run();
+
+        }
+
+
+        const headers = {};
+
+
+        if (visitor.cookie) {
+          headers["Set-Cookie"] =
+            visitor.cookie;
+        }
+
+
+        return redirect(
+          `/text/${encodeURIComponent(id)}`,
+          headers
+        );
+      }
+
+
+      // ─────────────────────────────────────────────────────────────
+      // Kommentar
+      // ─────────────────────────────────────────────────────────────
+
+      if (
+        action === "create_comment" &&
+        path === "/comment"
+      ) {
 
         const comment =
           String(
             form.get("comment") || ""
           ).trim();
 
-        const author =
+
+        const authorName =
           String(
             form.get("author_name") || ""
           ).trim();
 
 
-        const text =
-          await getText(
-            env,
-            textId
-          );
-
-
-        if (
-          !text ||
-          text.visibility === "private"
-        ) {
-
-          return new Response(
-            "Nicht verfügbar.",
-            {
-              status: 403
-            }
-          );
-        }
-
-
         if (!comment) {
 
-          return htmlResponse(
-            await publicTextPage(
-              env,
-              request,
-              text,
-              "Bitte einen Kommentar eingeben."
-            )
+          return redirect(
+            `/text/${encodeURIComponent(id)}`
           );
         }
 
 
-        const finalAuthor =
-          author.slice(0, 100);
+        const safeAuthor =
+          authorName
+            ? authorName.slice(0, 100)
+            : null;
 
 
-        await env.DB.prepare(`
-          INSERT INTO comments
-          (
-            text_id,
-            comment,
-            author_name,
-            created_at
-          )
-          VALUES (?, ?, ?, ?)
-        `)
-        .bind(
-          textId,
-          comment,
-          finalAuthor || null,
-          new Date().toISOString()
-        )
-        .run();
-
-
-        await increaseUnreadComments(env);
-
-
-        return new Response(null, {
-          status: 302,
-          headers: {
-            Location:
-              `/text/${encodeURIComponent(textId)}`
-          }
-        });
-      }
-
-
-      // ───────────────────────────────
-      // Like
-      // ───────────────────────────────
-
-      if (
-        action === "like"
-      ) {
-
-        const textId =
-          String(
-            form.get("text_id") || ""
-          );
-
-        const text =
-          await getText(
-            env,
-            textId
-          );
-
-
-        if (
-          !text ||
-          text.visibility === "private"
-        ) {
-
-          return new Response(
-            "Nicht verfügbar.",
-            {
-              status: 403
-            }
-          );
-        }
-
-
-        let visitorKey =
-          getVisitorKey(request);
-
-        if (!visitorKey) {
-          visitorKey =
-            crypto.randomUUID();
-        }
-
-
-        const alreadyLiked =
-          await hasLiked(
-            env,
-            textId,
-            visitorKey
-          );
-
-
-        if (!alreadyLiked) {
-
-          await env.DB.prepare(`
-            INSERT INTO text_likes
+        await env.DB
+          .prepare(`
+            INSERT INTO comments
             (
               text_id,
-              visitor_key,
-              created_at
+              comment,
+              created_at,
+              author_name
             )
-            VALUES (?, ?, ?)
+            VALUES (?, ?, ?, ?)
           `)
           .bind(
-            textId,
-            visitorKey,
-            new Date().toISOString()
+            id,
+            comment.slice(0, 10000),
+            new Date().toISOString(),
+            safeAuthor
           )
           .run();
 
-        } else {
 
-          await env.DB.prepare(`
-            DELETE FROM text_likes
-            WHERE
-              text_id = ?
-              AND visitor_key = ?
-          `)
-          .bind(
-            textId,
-            visitorKey
-          )
-          .run();
-        }
-
-
-        return new Response(null, {
-          status: 302,
-          headers: {
-            Location:
-              `/text/${encodeURIComponent(textId)}`,
-            "Set-Cookie":
-              visitorCookie(visitorKey)
-          }
-        });
+        return redirect(
+          `/text/${encodeURIComponent(id)}`
+        );
       }
+
     }
 
 
-    // ─────────────────────────────────
-    // 404
-    // ─────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════
+    // ÖFFENTLICHE STARTSEITE
+    // ═══════════════════════════════════════════════════════════════
+
+    if (
+      path === "/" ||
+      path === ""
+    ) {
+
+      const search =
+        url.searchParams.get("q") || "";
+
+
+      const folderFilter =
+        url.searchParams.get("folder") || "";
+
+
+      const texts =
+        await getTexts(env);
+
+
+      const folders =
+        await getFolders(env);
+
+
+      return htmlResponse(
+        publicHomePage(
+          texts,
+          folders,
+          search,
+          folderFilter
+        )
+      );
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════
+    // FALLBACK
+    // ═══════════════════════════════════════════════════════════════
 
     return htmlResponse(
       page(`
 
         <a
-          class="back"
+          class="back-link"
           href="/"
         >
-          ← Zurück
+          ← Zur Startseite
         </a>
 
-        <div class="card">
+        <h1 class="section-title">
+          Seite nicht gefunden
+        </h1>
 
-          <h1 class="section-title">
-            Seite nicht gefunden
-          </h1>
+        <p class="muted">
+          Die angeforderte Seite existiert nicht.
+        </p>
 
-          <p class="muted">
-            Diese Seite existiert nicht.
-          </p>
-
-        </div>
-
-      `, "404"),
+      `, "404 – NiB"),
       404
     );
+
   }
+
 };
-
-
-// ─────────────────────────────────────
-// Response-Helfer
-// ─────────────────────────────────────
-
-function htmlResponse(
-  html,
-  status = 200
-) {
-
-  return new Response(
-    html,
-    {
-      status,
-      headers: {
-        "content-type":
-          "text/html; charset=UTF-8",
-        "cache-control":
-          "no-store"
-      }
-    }
-  );
-}
-
