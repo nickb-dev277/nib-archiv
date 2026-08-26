@@ -1,16 +1,20 @@
+# ═════════════════════════════════════
+# NiB – Archiv
+# Cloudflare Worker Konfiguration
+# ═════════════════════════════════════
+
+
 # ─────────────────────────────────────
-# NiB – Cloudflare Worker
+# Worker
 # ─────────────────────────────────────
 
 name = "nib-archiv"
 main = "index.js"
 compatibility_date = "2026-08-24"
 
-# ─────────────────────────────
 
 # ─────────────────────────────────────
-# D1-Datenbank
-# ─────────────────────────────
+# D1 – Datenbank
 # ─────────────────────────────────────
 
 [[d1_databases]]
@@ -19,9 +23,6 @@ database_name = "nib-daten"
 database_id = "9d21cf05-7f02-4cc1-800f-48df6bbba914"
 
 
-# ─────────────────────────────
-# KV-Sessions
-# ─────────────────────────────
 # ─────────────────────────────────────
 # KV – Admin-Sessions
 # ─────────────────────────────────────
@@ -31,18 +32,19 @@ binding = "SESSIONS"
 id = "640cb47f4897497086d13c456ade2020"
 
 
-# ─────────────────────────────
 # ─────────────────────────────────────
 # Cloudinary
 # ─────────────────────────────────────
 
 [vars]
+
+# Öffentlicher Cloudinary Cloud Name.
+# Kein Secret – darf hier stehen.
 CLOUDINARY_CLOUD_NAME = "r9tk5wns"
 
 
 # ─────────────────────────────────────
-# Observability
-# ─────────────────────────────
+# Observability – Allgemein
 # ─────────────────────────────────────
 
 [observability]
@@ -50,13 +52,22 @@ enabled = false
 head_sampling_rate = 1
 
 
+# ─────────────────────────────────────
+# Observability – Logs
+# ─────────────────────────────────────
+
 [observability.logs]
 enabled = true
 head_sampling_rate = 1
-@@ -40,6 +52,3 @@ invocation_logs = true
+persist = true
+invocation_logs = true
+
+
+# ─────────────────────────────────────
+# Observability – Traces
+# ─────────────────────────────────────
+
+[observability.traces]
 enabled = false
 persist = true
 head_sampling_rate = 1
-
-[vars]
-CLOUDINARY_CLOUD_NAME = "r9tk5wns"
