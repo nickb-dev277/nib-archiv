@@ -5,7 +5,15 @@ import { esc, formatDate } from "./helpers.js";
 // Öffentliche Website
 // ─────────────────────────────────────
 
-export function publicHomePage(texts, folders, search = "", folderFilter = "", languageFilter = "", settings = {}) {
+export function publicHomePage(
+  texts,
+  folders,
+  search = "",
+  folderFilter = "",
+  languageFilter = "",
+  settings = {},
+  language = "en"
+) {
   const publicFolders = folders.filter(folder => !Number(folder.is_private));
   const normalizedSearch = search.trim().toLowerCase();
   const filteredTexts = texts.filter(text => {
