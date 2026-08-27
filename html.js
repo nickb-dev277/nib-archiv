@@ -610,6 +610,41 @@ label select {
     margin-bottom: 25px;
   }
 
+  .language-switch {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px;
+  gap: 2px;
+  background: #e4e8e3;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+
+.language-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 42px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  text-decoration: none;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: bold;
+  transition: all .2s ease;
+}
+
+.language-option:hover {
+  color: var(--text);
+}
+
+.language-option.active {
+  background: #4f9d61;
+  color: white;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .15);
+}
+
   .image-admin {
     grid-template-columns: 1fr;
   }
