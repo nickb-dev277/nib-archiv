@@ -38,11 +38,142 @@ export function publicHomePage(
   <header class="public-header">
   <div class="public-header-tools">
     <a class="admin-link" href="/admin">${esc(ui.admin)}</a>
-    <div class="language-switch">
-      ${language === "en"
-        ? `<strong>EN</strong> · <a href="/language?language=de">DE</a>`
-        : `<a href="/language?language=en">EN</a> · <strong>DE</strong>`}
-    </div>
+    // ─────────────────────────────────────
+// Öffentliche Textseite
+// ─────────────────────────────────────
+const publicTextMatch = path.match(/^\/text\/(\d+)$/);
+
+if (publicTextMatch) {
+  const id = publicTextMatch[1];
+
+  // Wichtig: dieselbe Sprache verwenden wie auf der Startseite
+  const publicLanguage = getPublicLanguage(request);
+
+  const text = await getPublicTextById(env, id);
+
+  if (!text) {
+    return htmlResponse(
+      page(
+        `<a class="back-link" href="/">← ${publicLanguage === "en" ? "Back" : "Zurück"}</a>
+         <h1 class="section-title">${publicLanguage === "en" ? "Text not found" : "Text nicht gefunden"}</h1>
+         <p class="muted">${publicLanguage === "en"
+           ? "This text does not exist or is not public."
+           : "Dieser Text existiert nicht oder ist nicht öffentlich."}</p>`,
+        publicLanguage === "en" ? "Not found" : "Nicht gefunden"
+      ),
+      404
+    );
+  }
+
+  if (text.visibility === "semi_private") {
+    const unlocked = cookieValue(
+      request,
+      `nib_unlock_${id}`
+    ) === "1";
+
+    if (!unlocked) {
+
+      if (request.method === "POST") {
+        const form = await request.formData();
+
+        if (String(form.get("action") || "") === "unlock_text") {
+
+          const password = String(
+            form.get("password") || ""
+          );
+
+          const expected =
+            text.password ||
+            env.SEMI_PRIVATE_PASSWORD;
+
+          if (password === expected) {
+
+            const visitor = ensureVisitorKey(request);
+
+            const response = htmlResponse(
+              publicTextPage(
+                text,
+                (await getFolders(env)).find(
+                  f => String(f.id) === String(text.folder)
+                ),
+                await getImages(env, id),
+                await getComments(env, id),
+                await getLikes(env, id),
+                await hasLiked(env, id, visitor.key),
+                visitor.key,
+                settings,
+                publicLanguage
+              )
+            );
+
+            response.headers.append(
+              "Set-Cookie",
+              unlockedCookie(id)
+            );
+
+            if (visitor.cookie) {
+              response.headers.append(
+                "Set-Cookie",
+                visitor.cookie
+              );
+            }
+
+            return response;
+          }
+
+          return htmlResponse(
+            publicPasswordPage(
+              text,
+              publicLanguage === "en"
+                ? "Wrong password."
+                : "Falsches Passwort.",
+              settings,
+              publicLanguage
+            ),
+            401
+          );
+        }
+      }
+
+      return htmlResponse(
+        publicPasswordPage(
+          text,
+          "",
+          settings,
+          publicLanguage
+        )
+      );
+    }
+  }
+
+  const visitor = ensureVisitorKey(request);
+  const folders = await getFolders(env);
+
+  const response = htmlResponse(
+    publicTextPage(
+      text,
+      folders.find(
+        f => String(f.id) === String(text.folder)
+      ),
+      await getImages(env, id),
+      await getComments(env, id),
+      await getLikes(env, id),
+      await hasLiked(env, id, visitor.key),
+      visitor.key,
+      settings,
+      publicLanguage
+    )
+  );
+
+  if (visitor.cookie) {
+    response.headers.append(
+      "Set-Cookie",
+      visitor.cookie
+    );
+  }
+
+  return response;
+}
   </div>
       <p class="subtitle">${esc(settings.artist_name || "NiB Archiv")}</p>
       <h1 class="logo">${esc(settings.public_title || "NiB")}</h1>
