@@ -1,5 +1,5 @@
 import {
-  esc, htmlResponse, redirect, getSession, adminCookie, clearAdminCookie, randomId
+  esc, htmlResponse, redirect, getSession, adminCookie, clearAdminCookie, randomId,getPublicLanguage
 } from "./helpers.js";
 import { publicHomePage, publicPasswordPage, publicTextPage } from "./public.js";
 import { page } from "./html.js";
@@ -350,14 +350,25 @@ export default {
       }
     }
 
-    // ─────────────────────────────────────
-    // Öffentliche Website
-    // ─────────────────────────────────────
-    if(path==="/"||path===""){
-      const search=url.searchParams.get("q")||""; const folderFilter=url.searchParams.get("folder")||""; const languageFilter=url.searchParams.get("language")||"";
-      return htmlResponse(publicHomePage(await getTexts(env),await getFolders(env),search,folderFilter,languageFilter,settings));
-    }
+// ─────────────────────────────────────
+// Öffentliche Website
+// ─────────────────────────────────────
+if(path==="/"||path===""){
+  const search=url.searchParams.get("q")||"";
+  const folderFilter=url.searchParams.get("folder")||"";
+  const languageFilter=url.searchParams.get("language")||"";
 
-    return htmlResponse(page(`<a class="back-link" href="/">← Zur Startseite</a><h1 class="section-title">Seite nicht gefunden</h1><p class="muted">Die angeforderte Seite existiert nicht.</p>`,`404 – NiB`),404);
-  }
-};
+  const publicLanguage=getPublicLanguage(request);
+
+  return htmlResponse(
+    publicHomePage(
+      await getTexts(env),
+      await getFolders(env),
+      search,
+      folderFilter,
+      languageFilter,
+      settings,
+      publicLanguage
+    )
+  );
+}
