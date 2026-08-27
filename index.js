@@ -353,7 +353,8 @@ if (path === "/language") {
           return htmlResponse(publicPasswordPage(text,"",settings));
         }
       }
-      const visitor=ensureVisitorKey(request); const folders=await getFolders(env); const response=htmlResponse(publicTextPage(text,folders.find(f=>String(f.id)===String(text.folder)),await getImages(env,id),await getComments(env,id),await getLikes(env,id),await hasLiked(env,id,visitor.key),visitor.key,settings)); if(visitor.cookie)response.headers.append("Set-Cookie",visitor.cookie); return response;
+      const publicLanguage = getPublicLanguage(request);
+      const visitor=ensureVisitorKey(request); const folders=await getFolders(env); const response=htmlResponse(publicTextPage(text,folders.find(f=>String(f.id)===String(text.folder)),await getImages(env,id),await getComments(env,id),await getLikes(env,id),await hasLiked(env,id,visitor.key),visitor.key,settings,publicLanguage)); if(visitor.cookie)response.headers.append("Set-Cookie",visitor.cookie); return response;
     }
 
     // ─────────────────────────────────────
