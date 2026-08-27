@@ -250,7 +250,7 @@ label select {
    ───────────────────────────────────── */
 .public-header-tools {
   position: absolute;
-  top: 0;
+  top: -12px;
   left: 0;
 
   display: flex;
