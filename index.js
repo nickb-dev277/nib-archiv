@@ -332,31 +332,143 @@ if (path === "/language") {
 
   return redirect("/");
 }
-    
     // ─────────────────────────────────────
-    // Öffentliche Textseite
-    // ─────────────────────────────────────
-    const publicTextMatch=path.match(/^\/text\/(\d+)$/);
-    if(publicTextMatch){
-      const id=publicTextMatch[1]; const text=await getPublicTextById(env,id);
-      if(!text) return htmlResponse(page(`<a class="back-link" href="/">← Zurück</a><h1 class="section-title">Text nicht gefunden</h1><p class="muted">Dieser Text existiert nicht oder ist nicht öffentlich.</p>`,"Nicht gefunden"),404);
-      if(text.visibility==="semi_private"){
-        const unlocked=cookieValue(request,`nib_unlock_${id}`)==="1";
-        if(!unlocked){
-          if(request.method==="POST"){
-            const form=await request.formData(); if(String(form.get("action")||"")==="unlock_text"){
-              const password=String(form.get("password")||""); const expected=text.password||env.SEMI_PRIVATE_PASSWORD;
-              if(password===expected){const visitor=ensureVisitorKey(request);const response=htmlResponse(publicTextPage(text,(await getFolders(env)).find(f=>String(f.id)===String(text.folder)),await getImages(env,id),await getComments(env,id),await getLikes(env,id),await hasLiked(env,id,visitor.key),visitor.key,settings));response.headers.append("Set-Cookie",unlockedCookie(id));if(visitor.cookie)response.headers.append("Set-Cookie",visitor.cookie);return response;}
-              return htmlResponse(publicPasswordPage(text,"Falsches Passwort.",settings),401);
+// Öffentliche Textseite
+// ─────────────────────────────────────
+const publicTextMatch = path.match(/^\/text\/(\d+)$/);
+
+if (publicTextMatch) {
+  const id = publicTextMatch[1];
+
+  // Wichtig: dieselbe Sprache verwenden wie auf der Startseite
+  const publicLanguage = getPublicLanguage(request);
+
+  const text = await getPublicTextById(env, id);
+
+  if (!text) {
+    return htmlResponse(
+      page(
+        `<a class="back-link" href="/">← ${publicLanguage === "en" ? "Back" : "Zurück"}</a>
+         <h1 class="section-title">${publicLanguage === "en" ? "Text not found" : "Text nicht gefunden"}</h1>
+         <p class="muted">${publicLanguage === "en"
+           ? "This text does not exist or is not public."
+           : "Dieser Text existiert nicht oder ist nicht öffentlich."}</p>`,
+        publicLanguage === "en" ? "Not found" : "Nicht gefunden"
+      ),
+      404
+    );
+  }
+
+  if (text.visibility === "semi_private") {
+    const unlocked = cookieValue(
+      request,
+      `nib_unlock_${id}`
+    ) === "1";
+
+    if (!unlocked) {
+
+      if (request.method === "POST") {
+        const form = await request.formData();
+
+        if (String(form.get("action") || "") === "unlock_text") {
+
+          const password = String(
+            form.get("password") || ""
+          );
+
+          const expected =
+            text.password ||
+            env.SEMI_PRIVATE_PASSWORD;
+
+          if (password === expected) {
+
+            const visitor = ensureVisitorKey(request);
+
+            const response = htmlResponse(
+              publicTextPage(
+                text,
+                (await getFolders(env)).find(
+                  f => String(f.id) === String(text.folder)
+                ),
+                await getImages(env, id),
+                await getComments(env, id),
+                await getLikes(env, id),
+                await hasLiked(env, id, visitor.key),
+                visitor.key,
+                settings,
+                publicLanguage
+              )
+            );
+
+            response.headers.append(
+              "Set-Cookie",
+              unlockedCookie(id)
+            );
+
+            if (visitor.cookie) {
+              response.headers.append(
+                "Set-Cookie",
+                visitor.cookie
+              );
             }
+
+            return response;
           }
-          return htmlResponse(publicPasswordPage(text,"",settings));
+
+          return htmlResponse(
+            publicPasswordPage(
+              text,
+              publicLanguage === "en"
+                ? "Wrong password."
+                : "Falsches Passwort.",
+              settings,
+              publicLanguage
+            ),
+            401
+          );
         }
       }
-      const publicLanguage = getPublicLanguage(request);
-      const visitor=ensureVisitorKey(request); const folders=await getFolders(env); const response=htmlResponse(publicTextPage(text,folders.find(f=>String(f.id)===String(text.folder)),await getImages(env,id),await getComments(env,id),await getLikes(env,id),await hasLiked(env,id,visitor.key),visitor.key,settings,publicLanguage)); if(visitor.cookie)response.headers.append("Set-Cookie",visitor.cookie); return response;
-    }
 
+      return htmlResponse(
+        publicPasswordPage(
+          text,
+          "",
+          settings,
+          publicLanguage
+        )
+      );
+    }
+  }
+
+  const visitor = ensureVisitorKey(request);
+  const folders = await getFolders(env);
+
+  const response = htmlResponse(
+    publicTextPage(
+      text,
+      folders.find(
+        f => String(f.id) === String(text.folder)
+      ),
+      await getImages(env, id),
+      await getComments(env, id),
+      await getLikes(env, id),
+      await hasLiked(env, id, visitor.key),
+      visitor.key,
+      settings,
+      publicLanguage
+    )
+  );
+
+  if (visitor.cookie) {
+    response.headers.append(
+      "Set-Cookie",
+      visitor.cookie
+    );
+  }
+
+  return response;
+}
+   
     // ─────────────────────────────────────
     // Öffentliche Likes / Kommentare
     // ─────────────────────────────────────
