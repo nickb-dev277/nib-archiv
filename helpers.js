@@ -126,3 +126,55 @@ export function clearAdminCookie() {
   ].join("; ");
 }
 
+// ─────────────────────────────────────
+// NiB – Lokale Sprache / 24-Stunden-Cookies
+// ─────────────────────────────────────
+
+const LANGUAGE_COOKIE_MAX_AGE = 60 * 60 * 24;
+
+export function getCookie(request, name) {
+  const cookieHeader = request.headers.get("Cookie") || "";
+
+  const cookies = cookieHeader.split(";");
+
+  for (const cookie of cookies) {
+    const separator = cookie.indexOf("=");
+
+    if (separator === -1) continue;
+
+    const key = cookie.slice(0, separator).trim();
+    const value = cookie.slice(separator + 1).trim();
+
+    if (key === name) {
+      try {
+        return decodeURIComponent(value);
+      } catch {
+        return value;
+      }
+    }
+  }
+
+  return null;
+}
+
+export function getPublicLanguage(request) {
+  const language = getCookie(request, "nib_public_language");
+
+  return language === "de" ? "de" : "en";
+}
+
+export function getAdminLanguage(request) {
+  const language = getCookie(request, "nib_admin_language");
+
+  return language === "en" ? "en" : "de";
+}
+
+export function languageCookie(name, language) {
+  const value = encodeURIComponent(language);
+
+  return `${name}=${value}; Max-Age=${LANGUAGE_COOKIE_MAX_AGE}; Path=/; SameSite=Lax`;
+}
+
+export function deleteLanguageCookie(name) {
+  return `${name}=; Max-Age=0; Path=/; SameSite=Lax`;
+}
