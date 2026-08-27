@@ -237,7 +237,21 @@ export default {
           const name=String(form.get("name")||"").trim(); if(name){const folderId=randomId(); await env.DB.prepare(`INSERT INTO folders(id,name,is_private,created_at,updated_at,deleted_at) VALUES(?,?,0,?,?,NULL)`).bind(folderId,name,now,now).run(); message="Ordner erstellt.";}
         }
         if(action==="rename_folder" && id){const name=String(form.get("name")||"").trim(); if(name){await env.DB.prepare(`UPDATE folders SET name=?,updated_at=? WHERE id=? AND deleted_at IS NULL`).bind(name,now,id).run();message="Ordner umbenannt.";}}
-        if(action==="toggle_folder" && id){const folder=await env.DB.prepare(`SELECT is_private FROM folders WHERE id=? AND deleted_at IS NULL`).bind(id).first(); if(folder){const next=Number(folder.is_private)?0:1; await env.DB.prepare(`UPDATE folders SET is_private=?,updated_at=? WHERE id=?`).bind(next,now,id).run(); const visibility=next?"private":"public"; await env.DB.prepare(`UPDATE texts SET visibility=?,updated_at=? WHERE folder=? AND deleted_at IS NULL`).bind(visibility,now,id).run(); message="Ordner und zugehörige Texte aktualisiert.";}}
+       if(action==="toggle_folder" && id){
+  const folder = await env.DB.prepare(
+    `SELECT is_private FROM folders WHERE id=? AND deleted_at IS NULL`
+  ).bind(id).first();
+
+  if(folder){
+    const next = Number(folder.is_private) ? 0 : 1;
+
+    await env.DB.prepare(
+      `UPDATE folders SET is_private=?,updated_at=? WHERE id=?`
+    ).bind(next, now, id).run();
+
+    message = "Ordner aktualisiert.";
+  }
+} 
         if(action==="delete_folder" && id){await env.DB.prepare(`UPDATE folders SET deleted_at=?,updated_at=? WHERE id=? AND deleted_at IS NULL`).bind(now,now,id).run();message="Ordner in den Papierkorb verschoben.";}
       }
       return htmlResponse(adminFoldersPage(await getFolders(env),await getNewNotificationCount(env),message));
