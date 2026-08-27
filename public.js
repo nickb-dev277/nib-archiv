@@ -35,8 +35,15 @@ export function publicHomePage(
     edited: "Zuletzt bearbeitet", privateHint: "Dieser Text ist nur für enge Freunde bestimmt.", empty: "Keine passenden Texte gefunden.", footer: settings.footer || ""
   };
   return page(`
-    <header class="public-header">
-      <a class="admin-link" href="/admin">${esc(ui.admin)}</a>
+  <header class="public-header">
+  <div class="public-header-tools">
+    <a class="admin-link" href="/admin">${esc(ui.admin)}</a>
+    <div class="language-switch">
+      ${language === "en"
+        ? `<strong>EN</strong> · <a href="/language?language=de">DE</a>`
+        : `<a href="/language?language=en">EN</a> · <strong>DE</strong>`}
+    </div>
+  </div>
       <p class="subtitle">${esc(settings.artist_name || "NiB Archiv")}</p>
       <h1 class="logo">${esc(settings.public_title || "NiB")}</h1>
       <div class="public-intro"><p class="muted">${esc(ui.intro)}</p></div>
