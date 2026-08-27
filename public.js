@@ -25,7 +25,7 @@ export function publicHomePage(
     if (normalizedSearch && !String(text.title || "").toLowerCase().includes(normalizedSearch)) return false;
     return true;
   });
-  const ui = settings.language === "en" ? {
+    const ui = language === "en" ? {
     admin: "Admin", intro: "Texts, notes and fragments.", search: "Search in title...", allFolders: "All folders",
     allLanguages: "All languages", german: "German", english: "English", folder: "Folder", created: "Created",
     edited: "Last edited", privateHint: "For close friends only.", empty: "No matching texts found.", footer: settings.footer || ""
@@ -75,8 +75,8 @@ export function publicHomePage(
   `, settings.public_title || "NiB Archiv");
 }
 
-export function publicPasswordPage(text, message = "", settings = {}) {
-  const english = settings.language === "en";
+  export function publicPasswordPage(text, message = "", settings = {}, language = "en") {
+  const english = language === "en";
   return page(`
     <a class="back-link" href="/">← ${english ? "Back" : "Zur Übersicht"}</a>
     <header class="text-header">
@@ -93,8 +93,18 @@ export function publicPasswordPage(text, message = "", settings = {}) {
   `, text.title);
 }
 
-export function publicTextPage(text, folder, images, comments, likes, liked, visitorKey, settings = {}) {
-  const english = settings.language === "en";
+  export function publicTextPage(
+    text,
+    folder,
+    images,
+    comments,
+    likes,
+    liked,
+    visitorKey,
+    settings = {},
+    language = "en"
+) {
+  const english = language === "en";
   return page(`
     <a class="back-link" href="/">← ${english ? "Back" : "Zur Übersicht"}</a>
     <header class="text-header">
