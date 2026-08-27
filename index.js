@@ -1,5 +1,5 @@
 import {
-  esc, htmlResponse, redirect, getSession, adminCookie, clearAdminCookie, randomId,getPublicLanguage
+  esc, htmlResponse, redirect, getSession, adminCookie, clearAdminCookie, randomId, getPublicLanguage, languageCookie
 } from "./helpers.js";
 import { publicHomePage, publicPasswordPage, publicTextPage } from "./public.js";
 import { page } from "./html.js";
@@ -304,7 +304,21 @@ export default {
       }
       return htmlResponse(adminSettingsPage(await getNewNotificationCount(env),message,await getSiteSettings(env),await getFolders(env)));
     }
+// ─────────────────────────────────────
+// Öffentliche Sprachumschaltung
+// ─────────────────────────────────────
+if (path === "/language") {
+  const selectedLanguage = url.searchParams.get("language");
 
+  if (selectedLanguage === "de" || selectedLanguage === "en") {
+    return redirect("/", {
+      "Set-Cookie": languageCookie("nib_public_language", selectedLanguage)
+    });
+  }
+
+  return redirect("/");
+}
+    
     // ─────────────────────────────────────
     // Öffentliche Textseite
     // ─────────────────────────────────────
