@@ -27,7 +27,7 @@ function cookieValue(request, name) {
 }
 
 function unlockedCookie(id) {
-  return `nib_unlock_${id}=1; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=86400`;
+  return `nib_unlock_${id}=1; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=900`;
 }
 
 function isValidLanguage(value) {
