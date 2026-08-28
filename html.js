@@ -824,6 +824,9 @@ label select {
     top: 18px;
     right: 0;
   }
+  .language-switch {
+  transform: translateY(7px);
+}
 }
 </style>
 
