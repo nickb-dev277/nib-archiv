@@ -793,3 +793,4 @@ label select {
   .image-admin {
     grid-template-columns: 1fr;
   }
+}
