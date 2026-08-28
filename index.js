@@ -207,23 +207,27 @@ export default {
           if (!["public","semi_private","private"].includes(data.visibility)) return htmlResponse(adminTextFormPage({...text,...data}, folders, await getImages(env,id), count, "Ungültige Sichtbarkeit."), 400);
           const now = new Date().toISOString();
           await env.DB.prepare(`UPDATE texts SET title=?,content=?,folder=?,visibility=?,password=?,language=?,updated_at=? WHERE id=?`).bind(data.title,data.content,data.folder,data.visibility,data.password || null,data.language,now,id).run();
-          for (const file of form.getAll("images")) {
-            if (!(file instanceof File) || !file.size) continue;
-            try {
-              const uploaded=await uploadToCloudinary(file,env);
-              ;
-              INSERT INTO text_images(id,text_id,url,filename,created_at,cloudinary_public_id)
-            } catch(error){ console.error("Cloudinary Upload:",error); }
-          }
-          text = await getTextById(env,id,false);
-        }
-        if (action === "delete_image") {
-          const imageId=String(form.get("image_id")||"");
-          const image=(await getImages(env,id)).find(item=>String(item.id)===imageId);
-          if(image){ try{await deleteFromCloudinary(image.cloudinary_public_id,env);}catch(e){console.error(e);} await env.DB.prepare(`DELETE FROM text_images WHERE id=? AND text_id=?`).bind(imageId,id).run(); }
-          text=await getTextById(env,id,false);
-        }
-      }
+         for (const file of form.getAll("images")) {
+  if (!(file instanceof File) || !file.size) continue;
+
+  try {
+    const uploaded = await uploadToCloudinary(file, env);
+
+    if (uploaded) {
+      await env.DB.prepare(`
+        INSERT INTO text_imagesid,text_id,url,filename,created_at,cloudinary_public_id)VALUES(?,?,?,?,?,?)`).bind(
+        randomId(),
+        id,
+        uploaded.url,
+        uploaded.filename,
+        now,
+        uploaded.public_id || null
+      ).run();
+    }
+  } catch (error) {
+    console.error("Cloudinary Upload:", error);
+  }
+}
       return htmlResponse(adminTextFormPage(text,folders,await getImages(env,id),count));
     }
 
