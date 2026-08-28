@@ -814,7 +814,7 @@ label select {
   /* Sprachschalter links und tiefer */
   .public-header-tools {
     position: absolute;
-    top: 18px;
+    top: 25px;
     left: 0;
   }
 
