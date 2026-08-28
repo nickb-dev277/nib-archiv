@@ -91,11 +91,7 @@ export function publicHomePage(
 
       <div class="public-header-tools">
 
-        <a class="admin-link" href="/admin">
-          ${esc(ui.admin)}
-        </a>
-
-        <div class="language-switch" aria-label="Sprache auswählen">
+  <div class="language-switch" aria-label="Sprache auswählen">
 
           <a
             class="language-option ${language === "de" ? "active" : ""}"
@@ -118,6 +114,10 @@ export function publicHomePage(
         </div>
 
       </div>
+
+      <a class="admin-link" href="/admin">
+  ${esc(ui.admin)}
+</a>
 
       <p class="subtitle">
         ${esc(settings.artist_name || "NiB Archiv")}
