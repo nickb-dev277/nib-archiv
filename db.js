@@ -75,20 +75,17 @@ export async function hasLiked(env, textId, visitorKey) {
 }
 
 export async function getImages(env, textId) {
-  const result = await env.DB.prepare(`
-    SELECT
-      id,
-      text_id,
-      filename,
-      created_at,
-      cloudinary_public_id,
-      url
-    FROM text_images
-    WHERE text_id = ?
-    ORDER BY created_at ASC
-  `).bind(textId).all();
+  const result = await env.DB.prepare(
+    `SELECT id,text_id,filename,created_at,cloudinary_public_id
+     FROM text_images
+     WHERE text_id=?
+     ORDER BY created_at ASC`
+  ).bind(textId).all();
 
-  return result.results || [];
+  return (result.results || []).map(image => ({
+    ...image,
+    url: image.cloudinary_url
+  }));
 }
 
 export async function getSetting(env,key) {
