@@ -178,7 +178,7 @@ export default {
             if (!(file instanceof File) || !file.size) continue;
             try {
               const uploaded = await uploadToCloudinary(file, env);
-              if (uploaded) await env.DB.prepare(`INSERT INTO text_images(id,text_id,r2_key,filename,created_at,cloudinary_public_id) VALUES(?,?,?,?,?,?)`).bind(randomId(), textId, uploaded.url, uploaded.filename, now, uploaded.public_id || null).run();
+              if (uploaded) await env.DB.prepare(`INSERT INTO text_images(id,text_id,url,filename,created_at,cloudinary_public_id) VALUES(?,?,?,?,?,?)`).bind(randomId(), textId, uploaded.url, uploaded.filename, now, uploaded.public_id || null).run();
             } catch (error) { console.error("Cloudinary Upload:", error); }
           }
         }
@@ -211,7 +211,7 @@ export default {
             if (!(file instanceof File) || !file.size) continue;
             try {
               const uploaded=await uploadToCloudinary(file,env);
-              if(uploaded) await env.DB.prepare(`INSERT INTO text_images(id,text_id,r2_key,filename,created_at,cloudinary_public_id) VALUES(?,?,?,?,?,?)`).bind(randomId(),id,uploaded.url,uploaded.filename,now,uploaded.public_id || null).run();
+              INSERT INTO text_images(id,text_id,url,filename,created_at,cloudinary_public_id)
             } catch(error){ console.error("Cloudinary Upload:",error); }
           }
           text = await getTextById(env,id,false);
