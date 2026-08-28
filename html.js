@@ -791,43 +791,27 @@ label select {
   }
 }
 
-
 /* Tablet quer */
+@media (min-width: 701px) {
 
-@media (min-width: 701px) and (max-width: 1100px) {
-
-  /* Sanftere Hintergrundfarbe nur auf Tablets */
-  body {
-    background: #ebe7e0;
+  /* Nur die öffentliche Startseite */
+  .public-header-tools {
+    top: 28px !important;
   }
 
-  .public-header {
-    position: relative;
-    padding-top: 55px;
-  }
-
-  /* "NiB Archiv" ausblenden */
   .public-header > .subtitle {
     display: none;
   }
 
-  /* Sprachschalter links und tiefer */
-  .public-header-tools {
-    position: absolute;
-    top: 25px;
-    left: 0;
+  .public-header {
+    padding-top: 55px;
   }
 
-  /* Admin rechts und auf gleicher Höhe */
   .admin-link {
-    position: absolute;
-    top: 18px;
-    right: 0;
+    top: 28px !important;
   }
-  .language-switch {
-  transform: translateY(7px);
 }
-}
+
 </style>
 
 </head>
