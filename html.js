@@ -687,56 +687,111 @@ label select {
     padding: 20px;
   }
 
-  .admin-link {
-    position: static;
-    display: inline-block;
-    margin-bottom: 25px;
+/* Responsive */
+
+@media (max-width: 700px) {
+
+  main {
+    width: min(100% - 28px, 1000px);
+    padding-top: 35px;
   }
 
-.language-option {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 42px;
-  height: 30px;
-  padding: 0 10px;
-  border-radius: 999px;
-  text-decoration: none;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: bold;
-  transition: all .2s ease;
-}
+  .logo {
+    font-size: 36px;
+  }
 
-.language-option:hover {
-  color: var(--text);
-}
+  .header,
+  .dashboard-header {
+    align-items: flex-start;
+  }
 
-.language-option.active {
-  background: #4f9d61;
-  color: white;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, .15);
-}
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .public-tools,
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .card {
+    padding: 20px;
+  }
+
+
+  /* ─────────────────────────────
+     Handy / kleine Bildschirme
+     ───────────────────────────── */
+
+  body {
+    background: #ebe7e0;
+  }
+
+  .public-header {
+    padding-top: 45px;
+  }
+
+  /* Sprachschalter links */
+  .public-header-tools {
+    position: absolute;
+    top: 8px;
+    left: 0;
+
+    display: flex;
+    align-items: center;
+  }
+
+  /* Admin rechts auf gleicher Höhe */
+  .admin-link {
+    position: absolute;
+    top: 8px;
+    right: 0;
+
+    display: inline-block;
+    margin: 0;
+
+    padding: 8px 13px;
+    background: var(--paper);
+  }
+
+  /* NiB Archiv ausblenden */
+  .public-header .subtitle {
+    display: none;
+  }
+
+
+  /* Sprachschalter */
+  .language-switch {
+    width: 76px;
+    height: 34px;
+  }
+
+  .language-option {
+    height: 26px;
+    min-width: 0;
+    padding: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 11px;
+  }
+
+  .language-option.active {
+    background: transparent;
+    color: white;
+    box-shadow: none;
+  }
+
+  .language-slider {
+    width: 34px;
+    height: 26px;
+  }
+
 
   .image-admin {
     grid-template-columns: 1fr;
   }
 
-}
-
-</style>
-
-</head>
-
-<body>
-
-<main>
-
-${content}
-
-</main>
-
-</body>
-
-</html>`;
 }
