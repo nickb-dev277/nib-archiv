@@ -119,10 +119,6 @@ export function publicHomePage(
   ${esc(ui.admin)}
 </a>
 
-      <p class="subtitle">
-        ${esc(settings.artist_name || "NiB Archiv")}
-      </p>
-
       <h1 class="logo">
         ${esc(settings.public_title || "NiB")}
       </h1>
