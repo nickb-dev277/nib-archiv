@@ -794,3 +794,4 @@ label select {
     grid-template-columns: 1fr;
   }
 }
+}
