@@ -211,7 +211,8 @@ export default {
             if (!(file instanceof File) || !file.size) continue;
             try {
               const uploaded=await uploadToCloudinary(file,env);
-              ;INSERT INTO text_images(id,text_id,url,filename,created_at,cloudinary_public_id)
+              ;
+              INSERT INTO text_images(id,text_id,url,filename,created_at,cloudinary_public_id)
             } catch(error){ console.error("Cloudinary Upload:",error); }
           }
           text = await getTextById(env,id,false);
