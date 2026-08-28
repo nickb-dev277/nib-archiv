@@ -187,50 +187,173 @@ export default {
       return htmlResponse(adminTextFormPage({folder:(await getDefaultFolder(env))?.id || "",language:"de",visibility:"private"}, folders, [], count));
     }
 
-    // ─────────────────────────────────────
-    // Admin – Text bearbeiten
-    // ─────────────────────────────────────
-    const adminTextMatch = path.match(/^\/admin\/text\/(\d+)$/);
-    if (adminTextMatch && isAdmin) {
-      const id = adminTextMatch[1];
-      let text = await getTextById(env, id, false);
-      if (!text) return htmlResponse(adminTextsPage(await getTexts(env), await getFolders(env), await getNewNotificationCount(env), "Text nicht gefunden."), 404);
-      const folders = await getFolders(env);
-      const count = await getNewNotificationCount(env);
-      if (request.method === "POST") {
-        const form = await request.formData();
-        const action = String(form.get("action") || "");
-        if (action === "update_text") {
-          const data = formTextData(form, text);
-          if (!data.title) return htmlResponse(adminTextFormPage({...text,...data}, folders, await getImages(env,id), count, "Bitte einen Titel eingeben."), 400);
-          if (!data.folder || !(await validFolder(env,data.folder))) return htmlResponse(adminTextFormPage({...text,...data}, folders, await getImages(env,id), count, "Ein Text darf nicht ohne Ordner gespeichert werden."), 400);
-          if (!["public","semi_private","private"].includes(data.visibility)) return htmlResponse(adminTextFormPage({...text,...data}, folders, await getImages(env,id), count, "Ungültige Sichtbarkeit."), 400);
-          const now = new Date().toISOString();
-          await env.DB.prepare(`UPDATE texts SET title=?,content=?,folder=?,visibility=?,password=?,language=?,updated_at=? WHERE id=?`).bind(data.title,data.content,data.folder,data.visibility,data.password || null,data.language,now,id).run();
-         for (const file of form.getAll("images")) {
-  if (!(file instanceof File) || !file.size) continue;
+   // ─────────────────────────────────────
+// Admin – Text bearbeiten
+// ─────────────────────────────────────
+const adminTextMatch = path.match(/^\/admin\/text\/(\d+)$/);
 
-  try {
-    const uploaded = await uploadToCloudinary(file, env);
+if (adminTextMatch && isAdmin) {
+  const id = adminTextMatch[1];
 
-    if (uploaded) {
-      await env.DB.prepare(`
-        INSERT INTO text_imagesid,text_id,url,filename,created_at,cloudinary_public_id)VALUES(?,?,?,?,?,?)`).bind(
-        randomId(),
-        id,
-        uploaded.url,
-        uploaded.filename,
-        now,
-        uploaded.public_id || null
-      ).run();
-    }
-  } catch (error) {
-    console.error("Cloudinary Upload:", error);
+  let text = await getTextById(env, id, false);
+
+  if (!text) {
+    return htmlResponse(
+      adminTextsPage(
+        await getTexts(env),
+        await getFolders(env),
+        await getNewNotificationCount(env),
+        "Text nicht gefunden."
+      ),
+      404
+    );
   }
-}
-      return htmlResponse(adminTextFormPage(text,folders,await getImages(env,id),count));
+
+  const folders = await getFolders(env);
+  const count = await getNewNotificationCount(env);
+
+  if (request.method === "POST") {
+    const form = await request.formData();
+    const action = String(form.get("action") || "");
+
+    // Text aktualisieren
+    if (action === "update_text") {
+      const data = formTextData(form, text);
+
+      if (!data.title) {
+        return htmlResponse(
+          adminTextFormPage(
+            { ...text, ...data },
+            folders,
+            await getImages(env, id),
+            count,
+            "Bitte einen Titel eingeben."
+          ),
+          400
+        );
+      }
+
+      if (!data.folder || !(await validFolder(env, data.folder))) {
+        return htmlResponse(
+          adminTextFormPage(
+            { ...text, ...data },
+            folders,
+            await getImages(env, id),
+            count,
+            "Ein Text darf nicht ohne Ordner gespeichert werden."
+          ),
+          400
+        );
+      }
+
+      if (!["public", "semi_private", "private"].includes(data.visibility)) {
+        return htmlResponse(
+          adminTextFormPage(
+            { ...text, ...data },
+            folders,
+            await getImages(env, id),
+            count,
+            "Ungültige Sichtbarkeit."
+          ),
+          400
+        );
+      }
+
+      const now = new Date().toISOString();
+
+      await env.DB.prepare(`
+        UPDATE texts
+        SET title=?,
+            content=?,
+            folder=?,
+            visibility=?,
+            password=?,
+            language=?,
+            updated_at=?
+        WHERE id=?
+      `).bind(
+        data.title,
+        data.content,
+        data.folder,
+        data.visibility,
+        data.password || null,
+        data.language,
+        now,
+        id
+      ).run();
+
+      // Neue Bilder hochladen
+      for (const file of form.getAll("images")) {
+        if (!(file instanceof File) || !file.size) continue;
+
+        try {
+          const uploaded = await uploadToCloudinary(file, env);
+
+          if (uploaded) {
+            await env.DB.prepare(`
+              INSERT INTO text_images(
+                id,
+                text_id,
+                url,
+                filename,
+                created_at,
+                cloudinary_public_id
+              )
+              VALUES(?,?,?,?,?,?)
+            `).bind(
+              randomId(),
+              id,
+              uploaded.url,
+              uploaded.filename,
+              now,
+              uploaded.public_id || null
+            ).run();
+          }
+        } catch (error) {
+          console.error("Cloudinary Upload:", error);
+        }
+      }
+
+      text = await getTextById(env, id, false);
     }
 
+    // Bild löschen
+    if (action === "delete_image") {
+      const imageId = String(form.get("image_id") || "");
+
+      const image = (await getImages(env, id)).find(
+        item => String(item.id) === imageId
+      );
+
+      if (image) {
+        try {
+          await deleteFromCloudinary(
+            image.cloudinary_public_id,
+            env
+          );
+        } catch (error) {
+          console.error(error);
+        }
+
+        await env.DB.prepare(
+          `DELETE FROM text_images WHERE id=? AND text_id=?`
+        ).bind(imageId, id).run();
+      }
+
+      text = await getTextById(env, id, false);
+    }
+  }
+
+  return htmlResponse(
+    adminTextFormPage(
+      text,
+      folders,
+      await getImages(env, id),
+      count
+    )
+  );
+}
+    
     // ─────────────────────────────────────
     // Admin – Ordner
     // ─────────────────────────────────────
