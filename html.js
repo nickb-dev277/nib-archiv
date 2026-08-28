@@ -696,6 +696,11 @@ label select {
     padding-top: 35px;
   }
 
+  /* Sanftere Hintergrundfarbe nur auf Handys */
+  body {
+    background: #ebe7e0;
+  }
+
   .logo {
     font-size: 36px;
   }
@@ -718,17 +723,16 @@ label select {
     padding: 20px;
   }
 
-
-  /* ─────────────────────────────
-     Handy / kleine Bildschirme
-     ───────────────────────────── */
-
-  body {
-    background: #ebe7e0;
-  }
+  /* Öffentliche Startseite */
 
   .public-header {
+    position: relative;
     padding-top: 45px;
+  }
+
+  /* "NiB Archiv" auf dem Handy ausblenden */
+  .public-header > .subtitle {
+    display: none;
   }
 
   /* Sprachschalter links */
@@ -741,7 +745,7 @@ label select {
     align-items: center;
   }
 
-  /* Admin rechts auf gleicher Höhe */
+  /* Admin rechts – gleiche Höhe wie Sprachschalter */
   .admin-link {
     position: absolute;
     top: 8px;
@@ -754,12 +758,6 @@ label select {
     background: var(--paper);
   }
 
-  /* NiB Archiv ausblenden */
-  .public-header .subtitle {
-    display: none;
-  }
-
-
   /* Sprachschalter */
   .language-switch {
     width: 76px;
@@ -767,21 +765,20 @@ label select {
   }
 
   .language-option {
+    width: 50%;
     height: 26px;
-    min-width: 0;
-    padding: 0;
 
     display: flex;
     align-items: center;
     justify-content: center;
 
+    padding: 0;
+
     font-size: 11px;
   }
 
   .language-option.active {
-    background: transparent;
     color: white;
-    box-shadow: none;
   }
 
   .language-slider {
@@ -789,9 +786,58 @@ label select {
     height: 26px;
   }
 
-
   .image-admin {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Tablet quer */
+
+@media (min-width: 701px) and (max-width: 1100px) {
+
+  /* Sanftere Hintergrundfarbe nur auf Tablets */
+  body {
+    background: #ebe7e0;
+  }
+
+  .public-header {
+    position: relative;
+    padding-top: 55px;
+  }
+
+  /* "NiB Archiv" ausblenden */
+  .public-header > .subtitle {
+    display: none;
+  }
+
+  /* Sprachschalter links und tiefer */
+  .public-header-tools {
+    position: absolute;
+    top: 18px;
+    left: 0;
+  }
+
+  /* Admin rechts und auf gleicher Höhe */
+  .admin-link {
+    position: absolute;
+    top: 18px;
+    right: 0;
+  }
+}
+</style>
+
+</head>
+
+<body>
+
+<main>
+
+${content}
+
+</main>
+
+</body>
+
+</html>`;
 }
