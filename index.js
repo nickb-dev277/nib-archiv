@@ -179,7 +179,10 @@ export default {
             try {
               const uploaded = await uploadToCloudinary(file, env);
               if (uploaded) await env.DB.prepare(`INSERT INTO text_images(id,text_id,url,filename,created_at,cloudinary_public_id) VALUES(?,?,?,?,?,?)`).bind(randomId(), textId, uploaded.url, uploaded.filename, now, uploaded.public_id || null).run();
-            } catch (error) { console.error("Cloudinary Upload:", error); }
+               } catch (error) {
+                  console.error("Cloudinary Upload:", error);
+                  throw error;
+                  }
           }
         }
         return redirect(`/admin/text/${encodeURIComponent(textId)}`);
