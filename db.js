@@ -9,15 +9,104 @@ export async function columnExists(env, table, column) {
 
 export async function ensureSchema(env) {
   const migrations = [];
-  if (!(await columnExists(env, "texts", "language"))) migrations.push(`ALTER TABLE texts ADD COLUMN language TEXT NOT NULL DEFAULT 'de'`);
-  if (!(await columnExists(env, "text_images", "cloudinary_public_id"))) migrations.push(`ALTER TABLE text_images ADD COLUMN cloudinary_public_id TEXT`);
- if (!(await columnExists(env, "text_images", "url"))) {
-  migrations.push(
-    `ALTER TABLE text_images ADD COLUMN url TEXT`
-  );
-} 
-  for (const sql of migrations) { try { await env.DB.prepare(sql).run(); } catch (e) { if (!String(e?.message || e).includes("duplicate column")) throw e; } }
-  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS notifications (id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT NOT NULL, text_id INTEGER, message TEXT NOT NULL, created_at TEXT NOT NULL, read_at TEXT)`).run();
+
+  // Texte: Sprache hinzufügen
+  if (!(await columnExists(env, "texts", "language"))) {
+    migrations.push(
+      `ALTER TABLE texts ADD COLUMN language TEXT NOT NULL DEFAULT 'de'`
+    );
+  }
+
+  // Alte R2-Spalte entfernen, falls sie noch vorhanden ist
+  const hasR2Key = await columnExists(env, "text_images", "r2_key");
+
+  if (hasR2Key) {
+    await env.DB.prepare(`
+      CREATE TABLE text_images_new (
+        id TEXT PRIMARY KEY,
+        text_id TEXT NOT NULL,
+        filename TEXT,
+        created_at TEXT NOT NULL,
+        cloudinary_public_id TEXT,
+        url TEXT,
+        cloudinary_url TEXT
+      )
+    `).run();
+
+    await env.DB.prepare(`
+      INSERT INTO text_images_new (
+        id,
+        text_id,
+        filename,
+        created_at,
+        cloudinary_public_id,
+        url,
+        cloudinary_url
+      )
+      SELECT
+        id,
+        text_id,
+        filename,
+        created_at,
+        cloudinary_public_id,
+        url,
+        cloudinary_url
+      FROM text_images
+    `).run();
+
+    await env.DB.prepare(`
+      DROP TABLE text_images
+    `).run();
+
+    await env.DB.prepare(`
+      ALTER TABLE text_images_new
+      RENAME TO text_images
+    `).run();
+
+  } else {
+
+    // Fehlende Cloudinary-Spalten ergänzen
+    if (!(await columnExists(env, "text_images", "cloudinary_public_id"))) {
+      migrations.push(
+        `ALTER TABLE text_images ADD COLUMN cloudinary_public_id TEXT`
+      );
+    }
+
+    if (!(await columnExists(env, "text_images", "url"))) {
+      migrations.push(
+        `ALTER TABLE text_images ADD COLUMN url TEXT`
+      );
+    }
+
+    if (!(await columnExists(env, "text_images", "cloudinary_url"))) {
+      migrations.push(
+        `ALTER TABLE text_images ADD COLUMN cloudinary_url TEXT`
+      );
+    }
+  }
+
+  // Migrationen ausführen
+  for (const sql of migrations) {
+    try {
+      await env.DB.prepare(sql).run();
+    } catch (e) {
+      if (!String(e?.message || e).includes("duplicate column")) {
+        throw e;
+      }
+    }
+  }
+
+  // Benachrichtigungen
+  await env.DB.prepare(`
+    CREATE TABLE IF NOT EXISTS notifications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      type TEXT NOT NULL,
+      text_id INTEGER,
+      message TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      read_at TEXT
+    )
+  `).run();
 }
 
 export async function cleanupTrash(env) {
