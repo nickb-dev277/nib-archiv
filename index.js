@@ -646,3 +646,8 @@ if(path==="/"||path===""){
 }
   }
 };
+console.log("Cloudinary config:", {
+  cloudName: Boolean(env.CLOUDINARY_CLOUD_NAME),
+  apiKey: Boolean(env.CLOUDINARY_API_KEY),
+  apiSecret: Boolean(env.CLOUDINARY_API_SECRET)
+});
