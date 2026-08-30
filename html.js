@@ -411,18 +411,44 @@ label select {
 
 .image-gallery {
   display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 16px;
   margin-top: 35px;
 }
 
-.image-gallery img {
+.image-preview {
   display: block;
   width: 100%;
-  height: auto;
-  max-height: 800px;
+  padding: 0;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.image-preview:hover {
+  opacity: 1;
+}
+
+.image-preview img {
+  display: block;
+  width: 100%;
+  height: 260px;
   object-fit: contain;
   background: var(--bg);
-  border: 1px solid var(--line);
+  transition: transform .2s ease;
+}
+
+.image-preview.image-expanded {
+  position: relative;
+  z-index: 10;
+  grid-column: 1 / -1;
+}
+
+.image-preview.image-expanded img {
+  height: auto;
+  max-height: 80vh;
+  object-fit: contain;
 }
 
 .interaction-bar {
