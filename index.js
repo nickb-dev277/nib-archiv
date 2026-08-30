@@ -1487,71 +1487,75 @@ export default {
 
 
         // Text endgültig löschen
-        if (
-          action === "permanent_delete_text" &&
-          id
-        ) {
-          const images =
-            await getImages(env, id);
+       if (
+  action === "permanent_delete_text" &&
+  id
+) {
+  const images =
+    await getImages(env, id);
 
-          // Zuerst Cloudinary-Bilder löschen
-          for (const image of images) {
-            if (!image.cloudinary_public_id) {
-              continue;
-            }
+  // Bilder aus Cloudinary löschen
+  for (const image of images) {
+    if (!image.cloudinary_public_id) {
+      continue;
+    }
 
-            try {
-              await deleteFromCloudinary(
-                image.cloudinary_public_id,
-                env
-              );
-            } catch (error) {
-              console.error(
-                "Cloudinary Delete:",
-                error
-              );
-            }
-          }
+    try {
+      await deleteFromCloudinary(
+        image.cloudinary_public_id,
+        env
+      );
+    } catch (error) {
+      console.error(
+        "Cloudinary Delete:",
+        error
+      );
+    }
+  }
 
-          // Danach Datenbank-Einträge löschen
-          await env.DB.prepare(`
-            DELETE FROM text_images
-            WHERE text_id=?
-          `)
-            .bind(id)
-            .run();
+  // Bilder aus der Datenbank löschen
+  await env.DB.prepare(`
+    DELETE FROM text_images
+    WHERE text_id = ?
+  `)
+    .bind(id)
+    .run();
 
-          await env.DB.prepare(`
-            DELETE FROM comments
-            WHERE text_id=?
-          `)
-            .bind(id)
-            .run();
+  // Kommentare löschen
+  await env.DB.prepare(`
+    DELETE FROM comments
+    WHERE text_id = ?
+  `)
+    .bind(id)
+    .run();
 
-          await env.DB.prepare(`
-            DELETE FROM text_likes
-            WHERE text_id=?
-          `)
-            .bind(id)
-            .run();
+  // Likes löschen
+  await env.DB.prepare(`
+    DELETE FROM text_likes
+    WHERE text_id = ?
+  `)
+    .bind(id)
+    .run();
 
-          await env.DB.prepare(`
-            DELETE FROM notifications
-            WHERE text_id=?
-          `)
-            .bind(id)
-            .run();
+  // Benachrichtigungen löschen
+  await env.DB.prepare(`
+    DELETE FROM notifications
+    WHERE text_id = ?
+  `)
+    .bind(id)
+    .run();
 
-          await env.DB.prepare(`
-            DELETE FROM texts
-            WHERE id=?
-          `)
-            .bind(id)
-            .run();
+  // Text endgültig löschen
+  await env.DB.prepare(`
+    DELETE FROM texts
+    WHERE id = ?
+  `)
+    .bind(id)
+    .run();
 
-          message =
-            "Text endgültig gelöscht.";
-        }
+  message =
+    "Text endgültig gelöscht.";
+}
 
 
         // Ordner wiederherstellen
