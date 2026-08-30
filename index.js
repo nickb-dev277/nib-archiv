@@ -80,6 +80,13 @@ function formTextData(form, fallback = {}) {
 
 export default {
   async fetch(request, env, ctx) {
+
+    console.log("Cloudinary config:", {
+      cloudName: Boolean(env.CLOUDINARY_CLOUD_NAME),
+      apiKey: Boolean(env.CLOUDINARY_API_KEY),
+      apiSecret: Boolean(env.CLOUDINARY_API_SECRET)
+    });
+
     const url = new URL(request.url);
     const path = url.pathname;
 
@@ -646,8 +653,3 @@ if(path==="/"||path===""){
 }
   }
 };
-console.log("Cloudinary config:", {
-  cloudName: Boolean(env.CLOUDINARY_CLOUD_NAME),
-  apiKey: Boolean(env.CLOUDINARY_API_KEY),
-  apiSecret: Boolean(env.CLOUDINARY_API_SECRET)
-});
