@@ -1314,10 +1314,7 @@ export default {
     message = "Ordner erstellt.";
   }
 }
-            message = "Ordner erstellt.";
-          }
-        }
-
+      
         if (
           action === "rename_folder" &&
           id
