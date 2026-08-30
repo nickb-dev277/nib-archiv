@@ -1581,13 +1581,13 @@ export default {
           action === "permanent_delete_folder" &&
           id
         ) {
-          await env.DB.prepare(`
-            DELETE FROM folders
-            WHERE id=?
-          `)
-            .bind(id)
-            .run();
-
+         await env.DB.prepare(`
+  DELETE FROM folders
+  WHERE id=?
+    AND deleted_at IS NOT NULL
+`)
+  .bind(id)
+  .run();
           message =
             "Ordner endgültig gelöscht.";
         }
