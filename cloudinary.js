@@ -18,6 +18,11 @@ export async function uploadToCloudinary(file, env) {
     return null;
   }
 
+  console.log("Cloudinary env check:", {
+  cloudName: Boolean(env.CLOUDINARY_CLOUD_NAME),
+  apiKey: Boolean(env.CLOUDINARY_API_KEY),
+  apiSecret: Boolean(env.CLOUDINARY_API_SECRET)
+});
   if (!env.CLOUDINARY_CLOUD_NAME) {
     throw new Error("CLOUDINARY_CLOUD_NAME fehlt.");
   }
