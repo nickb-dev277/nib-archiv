@@ -1,5 +1,3 @@
-import { deleteFromCloudinary } from "./cloudinary.js";
-
 // ─────────────────────────────────────
 // Datenbank
 // ─────────────────────────────────────
@@ -32,7 +30,6 @@ export async function ensureSchema(env) {
   );
 
   if (hasR2Key) {
-
     await env.DB.prepare(`
       CREATE TABLE text_images_new (
         id TEXT PRIMARY KEY,
@@ -144,63 +141,23 @@ export async function ensureSchema(env) {
 
 
 // ─────────────────────────────────────
-// Bilder eines Textes aus Cloudinary
-// und Datenbank löschen
+// Papierkorb-Bereinigung
 // ─────────────────────────────────────
-
-export async function deleteTextImages(env, textId) {
-
-  const result = await env.DB.prepare(`
-    SELECT
-      id,
-      cloudinary_public_id
-    FROM text_images
-    WHERE text_id=?
-  `).bind(textId).all();
-
-  const images = result.results || [];
-
-  for (const image of images) {
-
-    if (image.cloudinary_public_id) {
-      try {
-
-        await deleteFromCloudinary(
-          image.cloudinary_public_id,
-          env
-        );
-
-      } catch (error) {
-
-        console.error(
-          "Cloudinary Bild konnte nicht gelöscht werden:",
-          {
-            textId,
-            imageId: image.id,
-            publicId: image.cloudinary_public_id,
-            error: String(error?.message || error)
-          }
-        );
-      }
-    }
-  }
-
-  // Datenbank-Einträge der Bilder entfernen
-  await env.DB.prepare(`
-    DELETE FROM text_images
-    WHERE text_id=?
-  `).bind(textId).run();
-}
-
-
-// ─────────────────────────────────────
-// Papierkorb automatisch bereinigen
-// ─────────────────────────────────────
+//
+// WICHTIG:
+// Diese Funktion löscht nur die Daten aus der Datenbank.
+// Die Cloudinary-Bilder werden in index.js VORHER
+// über deleteFromCloudinary() gelöscht.
+//
+// Dadurch bleibt alles sauber getrennt:
+// db.js = Datenbank
+// index.js = Cloudinary + Datenbank
+//
 
 export async function cleanupTrash(env) {
-
   const cutoff = new Date(
-    Date.now() - 30 * 24 * 60 * 60 * 1000
+    Date.now() -
+      30 * 24 * 60 * 60 * 1000
   ).toISOString();
 
   const texts = await env.DB.prepare(`
@@ -208,47 +165,55 @@ export async function cleanupTrash(env) {
     FROM texts
     WHERE deleted_at IS NOT NULL
       AND deleted_at <= ?
-  `).bind(cutoff).all();
+  `)
+    .bind(cutoff)
+    .all();
 
   for (const row of texts.results || []) {
 
-    // Bilder zuerst aus Cloudinary löschen
-    await deleteTextImages(
-      env,
-      row.id
-    );
+    await env.DB.prepare(`
+      DELETE FROM text_images
+      WHERE text_id = ?
+    `)
+      .bind(row.id)
+      .run();
 
-    // Kommentare löschen
     await env.DB.prepare(`
       DELETE FROM comments
-      WHERE text_id=?
-    `).bind(row.id).run();
+      WHERE text_id = ?
+    `)
+      .bind(row.id)
+      .run();
 
-    // Likes löschen
     await env.DB.prepare(`
       DELETE FROM text_likes
-      WHERE text_id=?
-    `).bind(row.id).run();
+      WHERE text_id = ?
+    `)
+      .bind(row.id)
+      .run();
 
-    // Benachrichtigungen löschen
     await env.DB.prepare(`
       DELETE FROM notifications
-      WHERE text_id=?
-    `).bind(row.id).run();
+      WHERE text_id = ?
+    `)
+      .bind(row.id)
+      .run();
 
-    // Text endgültig aus der Datenbank löschen
     await env.DB.prepare(`
       DELETE FROM texts
-      WHERE id=?
-    `).bind(row.id).run();
+      WHERE id = ?
+    `)
+      .bind(row.id)
+      .run();
   }
 
-  // Alte Ordner endgültig löschen
   await env.DB.prepare(`
     DELETE FROM folders
     WHERE deleted_at IS NOT NULL
       AND deleted_at <= ?
-  `).bind(cutoff).run();
+  `)
+    .bind(cutoff)
+    .run();
 }
 
 
@@ -260,9 +225,7 @@ export async function getFolders(
   env,
   includeDeleted = false
 ) {
-
   const query = includeDeleted
-
     ? `
       SELECT
         id,
@@ -274,7 +237,6 @@ export async function getFolders(
       FROM folders
       ORDER BY name COLLATE NOCASE
     `
-
     : `
       SELECT
         id,
@@ -304,9 +266,7 @@ export async function getTexts(
   env,
   includeDeleted = false
 ) {
-
   const query = includeDeleted
-
     ? `
       SELECT
         id,
@@ -322,7 +282,6 @@ export async function getTexts(
       FROM texts
       ORDER BY updated_at DESC
     `
-
     : `
       SELECT
         id,
@@ -353,9 +312,7 @@ export async function getTextById(
   id,
   includeDeleted = false
 ) {
-
   const query = includeDeleted
-
     ? `
       SELECT
         id,
@@ -369,9 +326,8 @@ export async function getTextById(
         created_at,
         deleted_at
       FROM texts
-      WHERE id=?
+      WHERE id = ?
     `
-
     : `
       SELECT
         id,
@@ -385,7 +341,7 @@ export async function getTextById(
         created_at,
         deleted_at
       FROM texts
-      WHERE id=?
+      WHERE id = ?
         AND deleted_at IS NULL
     `;
 
@@ -400,37 +356,39 @@ export async function getPublicTextById(
   env,
   id
 ) {
-
-  return await env.DB.prepare(`
-    SELECT
-      t.id,
-      t.title,
-      t.content,
-      t.folder,
-      t.visibility,
-      t.password,
-      t.language,
-      t.updated_at,
-      t.created_at
-    FROM texts t
-    LEFT JOIN folders f
-      ON f.id=t.folder
-    WHERE t.id=?
-      AND t.deleted_at IS NULL
-      AND (
-        t.visibility='public'
-        OR t.visibility='semi_private'
-      )
-      AND (
-        t.folder IS NULL
-        OR t.folder=''
-        OR (
-          f.id IS NOT NULL
-          AND f.deleted_at IS NULL
-          AND f.is_private=0
+  return await env.DB
+    .prepare(`
+      SELECT
+        t.id,
+        t.title,
+        t.content,
+        t.folder,
+        t.visibility,
+        t.password,
+        t.language,
+        t.updated_at,
+        t.created_at
+      FROM texts t
+      LEFT JOIN folders f
+        ON f.id = t.folder
+      WHERE t.id = ?
+        AND t.deleted_at IS NULL
+        AND (
+          t.visibility = 'public'
+          OR t.visibility = 'semi_private'
         )
-      )
-  `).bind(id).first();
+        AND (
+          t.folder IS NULL
+          OR t.folder = ''
+          OR (
+            f.id IS NOT NULL
+            AND f.deleted_at IS NULL
+            AND f.is_private = 0
+          )
+        )
+    `)
+    .bind(id)
+    .first();
 }
 
 
@@ -442,37 +400,40 @@ export async function getComments(
   env,
   textId = null
 ) {
-
   if (textId !== null) {
-
-    const result = await env.DB.prepare(`
-      SELECT
-        id,
-        text_id,
-        comment,
-        created_at,
-        author_name
-      FROM comments
-      WHERE text_id=?
-      ORDER BY created_at ASC,id ASC
-    `).bind(textId).all();
+    const result = await env.DB
+      .prepare(`
+        SELECT
+          id,
+          text_id,
+          comment,
+          created_at,
+          author_name
+        FROM comments
+        WHERE text_id = ?
+        ORDER BY created_at ASC, id ASC
+      `)
+      .bind(textId)
+      .all();
 
     return result.results || [];
   }
 
-  const result = await env.DB.prepare(`
-    SELECT
-      c.id,
-      c.text_id,
-      c.comment,
-      c.created_at,
-      c.author_name,
-      t.title
-    FROM comments c
-    LEFT JOIN texts t
-      ON t.id=c.text_id
-    ORDER BY c.created_at DESC,c.id DESC
-  `).all();
+  const result = await env.DB
+    .prepare(`
+      SELECT
+        c.id,
+        c.text_id,
+        c.comment,
+        c.created_at,
+        c.author_name,
+        t.title
+      FROM comments c
+      LEFT JOIN texts t
+        ON t.id = c.text_id
+      ORDER BY c.created_at DESC, c.id DESC
+    `)
+    .all();
 
   return result.results || [];
 }
@@ -486,16 +447,16 @@ export async function getLikes(
   env,
   textId
 ) {
+  const result = await env.DB
+    .prepare(`
+      SELECT COUNT(*) AS count
+      FROM text_likes
+      WHERE text_id = ?
+    `)
+    .bind(textId)
+    .first();
 
-  const result = await env.DB.prepare(`
-    SELECT COUNT(*) AS count
-    FROM text_likes
-    WHERE text_id=?
-  `).bind(textId).first();
-
-  return Number(
-    result?.count || 0
-  );
+  return Number(result?.count || 0);
 }
 
 
@@ -504,19 +465,18 @@ export async function hasLiked(
   textId,
   visitorKey
 ) {
-
   if (!visitorKey) return false;
 
-  const result = await env.DB.prepare(`
-    SELECT id
-    FROM text_likes
-    WHERE text_id=?
-      AND visitor_key=?
-    LIMIT 1
-  `).bind(
-    textId,
-    visitorKey
-  ).first();
+  const result = await env.DB
+    .prepare(`
+      SELECT id
+      FROM text_likes
+      WHERE text_id = ?
+        AND visitor_key = ?
+      LIMIT 1
+    `)
+    .bind(textId, visitorKey)
+    .first();
 
   return Boolean(result);
 }
@@ -530,19 +490,21 @@ export async function getImages(
   env,
   textId
 ) {
-
-  const result = await env.DB.prepare(`
-    SELECT
-      id,
-      text_id,
-      url,
-      filename,
-      created_at,
-      cloudinary_public_id
-    FROM text_images
-    WHERE text_id=?
-    ORDER BY created_at ASC
-  `).bind(textId).all();
+  const result = await env.DB
+    .prepare(`
+      SELECT
+        id,
+        text_id,
+        url,
+        filename,
+        created_at,
+        cloudinary_public_id
+      FROM text_images
+      WHERE text_id = ?
+      ORDER BY created_at ASC
+    `)
+    .bind(textId)
+    .all();
 
   return result.results || [];
 }
@@ -556,12 +518,14 @@ export async function getSetting(
   env,
   key
 ) {
-
-  const result = await env.DB.prepare(`
-    SELECT value
-    FROM settings
-    WHERE key=?
-  `).bind(key).first();
+  const result = await env.DB
+    .prepare(`
+      SELECT value
+      FROM settings
+      WHERE key = ?
+    `)
+    .bind(key)
+    .first();
 
   return result?.value || "";
 }
@@ -572,23 +536,24 @@ export async function setSetting(
   key,
   value
 ) {
-
-  await env.DB.prepare(`
-    INSERT INTO settings(key,value)
-    VALUES(?,?)
-    ON CONFLICT(key)
-    DO UPDATE SET value=excluded.value
-  `).bind(
-    key,
-    String(value ?? "")
-  ).run();
+  await env.DB
+    .prepare(`
+      INSERT INTO settings(key, value)
+      VALUES(?, ?)
+      ON CONFLICT(key)
+      DO UPDATE SET value = excluded.value
+    `)
+    .bind(
+      key,
+      String(value ?? "")
+    )
+    .run();
 }
 
 
 export async function getSiteSettings(
   env
 ) {
-
   const keys = [
     "artist_name",
     "public_title",
@@ -625,16 +590,15 @@ export async function getSiteSettings(
 export async function getNewNotificationCount(
   env
 ) {
+  const result = await env.DB
+    .prepare(`
+      SELECT COUNT(*) AS count
+      FROM notifications
+      WHERE read_at IS NULL
+    `)
+    .first();
 
-  const result = await env.DB.prepare(`
-    SELECT COUNT(*) AS count
-    FROM notifications
-    WHERE read_at IS NULL
-  `).first();
-
-  return Number(
-    result?.count || 0
-  );
+  return Number(result?.count || 0);
 }
 
 
@@ -642,22 +606,26 @@ export async function getNotifications(
   env,
   limit = 50
 ) {
-
-  const result = await env.DB.prepare(`
-    SELECT
-      n.id,
-      n.type,
-      n.text_id,
-      n.message,
-      n.created_at,
-      n.read_at,
-      t.title
-    FROM notifications n
-    LEFT JOIN texts t
-      ON t.id=n.text_id
-    ORDER BY n.created_at DESC,n.id DESC
-    LIMIT ?
-  `).bind(limit).all();
+  const result = await env.DB
+    .prepare(`
+      SELECT
+        n.id,
+        n.type,
+        n.text_id,
+        n.message,
+        n.created_at,
+        n.read_at,
+        t.title
+      FROM notifications n
+      LEFT JOIN texts t
+        ON t.id = n.text_id
+      ORDER BY
+        n.created_at DESC,
+        n.id DESC
+      LIMIT ?
+    `)
+    .bind(limit)
+    .all();
 
   return result.results || [];
 }
@@ -669,22 +637,24 @@ export async function addNotification(
   textId,
   message
 ) {
-
-  await env.DB.prepare(`
-    INSERT INTO notifications(
+  await env.DB
+    .prepare(`
+      INSERT INTO notifications(
+        type,
+        text_id,
+        message,
+        created_at,
+        read_at
+      )
+      VALUES(?, ?, ?, ?, NULL)
+    `)
+    .bind(
       type,
-      text_id,
+      textId || null,
       message,
-      created_at,
-      read_at
+      new Date().toISOString()
     )
-    VALUES(?,?,?,?,NULL)
-  `).bind(
-    type,
-    textId || null,
-    message,
-    new Date().toISOString()
-  ).run();
+    .run();
 }
 
 
@@ -692,29 +662,33 @@ export async function markNotificationRead(
   env,
   id
 ) {
-
-  await env.DB.prepare(`
-    UPDATE notifications
-    SET read_at=?
-    WHERE id=?
-  `).bind(
-    new Date().toISOString(),
-    id
-  ).run();
+  await env.DB
+    .prepare(`
+      UPDATE notifications
+      SET read_at = ?
+      WHERE id = ?
+    `)
+    .bind(
+      new Date().toISOString(),
+      id
+    )
+    .run();
 }
 
 
 export async function markAllNotificationsRead(
   env
 ) {
-
-  await env.DB.prepare(`
-    UPDATE notifications
-    SET read_at=?
-    WHERE read_at IS NULL
-  `).bind(
-    new Date().toISOString()
-  ).run();
+  await env.DB
+    .prepare(`
+      UPDATE notifications
+      SET read_at = ?
+      WHERE read_at IS NULL
+    `)
+    .bind(
+      new Date().toISOString()
+    )
+    .run();
 }
 
 
