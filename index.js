@@ -1282,37 +1282,38 @@ export default {
         const now =
           new Date().toISOString();
 
+            
+       if (action === "create_folder") {
+  const name =
+    String(
+      form.get("name") || ""
+    ).trim();
 
-        if (
-          action === "create_folder"
-        ) {
+  if (name) {
+    const folderId = randomId();
 
-          const name =
-            String(
-              form.get("name") || ""
-            ).trim();
+    await env.DB.prepare(`
+      INSERT INTO folders(
+        id,
+        name,
+        is_private,
+        created_at,
+        updated_at,
+        deleted_at
+      )
+      VALUES(?, ?, 0, ?, ?, NULL)
+    `)
+      .bind(
+        folderId,
+        name,
+        now,
+        now
+      )
+      .run();
 
-          if (name) {
-
-            const folderId =
-              randomId();
-
-            await env.DB.prepare(`
-              INSERT INTO folders(
-                id,
-                name,
-                is_private,
-                created_at,
-                updated_at,
-                deleted_at
-              )
-              VALUES(
-                ?,?,0,?,?,NULL
-              )
-            `)
-            )
-              .run();
-
+    message = "Ordner erstellt.";
+  }
+}
             message = "Ordner erstellt.";
           }
         }
