@@ -700,16 +700,14 @@ export default {
         }
       }
 
-      return htmlResponse(
-        adminTextsPage(
-          await getTexts(env),
-          await getFolders(env),
-          await getNewNotificationCount(
-            env
-          ),
-          message
-        )
-      );
+   return htmlResponse(
+  adminTextsPage(
+    await getTexts(env, false),
+    await getFolders(env, false),
+    await getNewNotificationCount(env),
+    message
+  )
+);
     }
 
 
