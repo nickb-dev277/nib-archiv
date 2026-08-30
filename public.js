@@ -419,17 +419,24 @@ export function publicTextPage(
       ${
         images.length
           ? `
-            <div class="image-gallery">
+          <div class="image-gallery">
 
-              ${images.map(image => `
-                <img
-                  src="${esc(image.url)}"
-                  alt="${esc(image.filename || text.title)}"
-                  loading="lazy"
-                >
-              `).join("")}
+  ${images.map(image => `
+    <button
+      type="button"
+      class="image-preview"
+      onclick="this.classList.toggle('image-expanded')"
+      aria-label="Bild vergrößern"
+    >
+      <img
+        src="${esc(image.url)}"
+        alt="${esc(image.filename || text.title)}"
+        loading="lazy"
+      >
+    </button>
+  `).join("")}
 
-            </div>
+</div>  
           `
           : ""
       }
