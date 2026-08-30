@@ -307,12 +307,13 @@ async function cleanupTrashWithImages(env) {
       .bind(row.id)
       .run();
 
-    await env.DB.prepare(`
-      DELETE FROM texts
-      WHERE id = ?
-    `)
-      .bind(row.id)
-      .run();
+   await env.DB.prepare(`
+  DELETE FROM texts
+  WHERE id=?
+    AND deleted_at IS NOT NULL
+`)
+  .bind(id)
+  .run();
   }
 
   // Alte Ordner endgültig löschen
